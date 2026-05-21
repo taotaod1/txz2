@@ -1,4 +1,4 @@
-const elfNames = { elf1: '精灵1', elf2: '精灵2' }
+const elfNames = { elf1: '雪熊', elf2: '火龙' }
 
 const PRICE = {
   normal: { pass: 68, coupon: 40 },
@@ -135,8 +135,8 @@ function searchChain(people, friendMap) {
  * @param {Array} friendMatrix - [[idA, idB], ...] 双向好友关系（仅用于提示）
  */
 export function generatePlan(people, tier, names, friendMatrix) {
-  elfNames.elf1 = names.elf1 || '精灵1'
-  elfNames.elf2 = names.elf2 || '精灵2'
+  elfNames.elf1 = names.elf1 || '雪熊'
+  elfNames.elf2 = names.elf2 || '火龙'
 
   const validation = validatePeople(people)
   if (!validation.valid) {
@@ -155,8 +155,8 @@ export function generatePlan(people, tier, names, friendMatrix) {
       success: false,
       error:
         `无法生成满足精灵交替规则的传火链条。` +
-        `当前有 ${elf1Count} 人选精灵1、${elf2Count} 人选精灵2、${anyCount} 人选都行，` +
-        `共 ${people.length} 人。请调整需求配置，确保精灵1和精灵2的人数能交替排列。`,
+        `当前有 ${elf1Count} 人选「${elfNames.elf1}」、${elf2Count} 人选「${elfNames.elf2}」、${anyCount} 人选都行，` +
+        `共 ${people.length} 人。请调整需求配置，确保两种精灵的人数能交替排列。`,
     }
   }
 
