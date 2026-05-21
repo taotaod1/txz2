@@ -2023,24 +2023,6 @@ body {
     align-items: start;
   }
 
-  .content-wrapper.has-result .config-column {
-    position: sticky;
-    top: 20px;
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
-    padding-right: 4px;
-    scrollbar-width: thin;
-  }
-
-  .content-wrapper.has-result .config-column::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .content-wrapper.has-result .config-column::-webkit-scrollbar-thumb {
-    background: var(--ios-fill-secondary);
-    border-radius: 3px;
-  }
-
   .content-wrapper:not(.has-result) .config-column {
     max-width: 720px;
     width: 100%;
