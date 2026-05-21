@@ -87,6 +87,16 @@
                     >都行</button>
                   </div>
                 </div>
+                <div class="person-field head-field">
+                  <label class="field-label">车头</label>
+                  <button
+                    class="ios-toggle"
+                    :class="{ active: person.isHead }"
+                    @click="onHeadToggle(person)"
+                  >
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
                 <div class="person-field tail-field">
                   <label class="field-label">车尾</label>
                   <button
@@ -399,7 +409,7 @@ function setAllFriends() {
 }
 
 function addPerson() {
-  people.push({ id: nextId++, name: '', needElf: 'elf1', isTail: false })
+  people.push({ id: nextId++, name: '', needElf: 'elf1', isHead: false, isTail: false })
 }
 
 function removePerson(index) {
@@ -411,6 +421,15 @@ function removePerson(index) {
     }
   }
   keysToDelete.forEach((k) => friendships.delete(k))
+}
+
+function onHeadToggle(person) {
+  person.isHead = !person.isHead
+  if (person.isHead) {
+    people.forEach((p) => {
+      if (p.id !== person.id) p.isHead = false
+    })
+  }
 }
 
 function onTailToggle(person) {
@@ -433,9 +452,9 @@ function loadSampleData() {
   friendships.clear()
   nextId = 1
   const sample = [
-    { name: '小明', needElf: 'elf1', isTail: false },
-    { name: '小红', needElf: 'any', isTail: false },
-    { name: '小刚', needElf: 'elf1', isTail: true },
+    { name: '小明', needElf: 'elf1', isHead: false, isTail: false },
+    { name: '小红', needElf: 'any', isHead: false, isTail: false },
+    { name: '小刚', needElf: 'elf1', isHead: false, isTail: true },
   ]
   sample.forEach((p) => { people.push({ id: nextId++, ...p }) })
   friendships.set(getFriendKey(1, 2), true)
@@ -875,6 +894,11 @@ body {
 .elf-field {
   flex: 1;
   min-width: 200px;
+}
+
+.head-field {
+  width: auto;
+  flex-shrink: 0;
 }
 
 .tail-field {

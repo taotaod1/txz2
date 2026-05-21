@@ -11,16 +11,16 @@ function validatePeople(people) {
   if (people.length < 2) {
     return { valid: false, error: '至少需要2个人才能组成传火链条' }
   }
-  const tailList = people.filter((p) => p.isTail)
-  if (tailList.length === 0) {
-    return { valid: false, error: '必须指定一个车尾（链条最后一人）' }
+  const headList = people.filter((p) => p.isHead)
+  if (headList.length > 1) {
+    return { valid: false, error: '只能有一个车头，当前有 ' + headList.length + ' 人被标记为车头' }
   }
+  const tailList = people.filter((p) => p.isTail)
   if (tailList.length > 1) {
     return { valid: false, error: '只能有一个车尾，当前有 ' + tailList.length + ' 人被标记为车尾' }
   }
-  const tailPerson = tailList[0]
-  if (tailPerson.needElf === 'any') {
-    return { valid: false, error: '车尾必须明确选择精灵1或精灵2，不能选"都行"' }
+  if (headList.length > 0 && tailList.length > 0 && headList[0].id === tailList[0].id) {
+    return { valid: false, error: '车头和车尾不能是同一个人' }
   }
   return { valid: true, error: null }
 }
@@ -51,40 +51,64 @@ function areFriends(friendMap, idA, idB) {
  */
 function searchChain(people) {
   const N = people.length
+  const headPerson = people.find((p) => p.isHead)
   const tailPerson = people.find((p) => p.isTail)
 
-  const chain = new Array(N).fill(null)
-  chain[N - 1] = { person: tailPerson, assignedElf: tailPerson.needElf }
-  const used = new Set([tailPerson.id])
+  const tailCandidates = tailPerson
+    ? [tailPerson]
+    : people.filter((p) => !headPerson || p.id !== headPerson.id)
 
-  function dfs(pos) {
-    if (pos < 0) return true
+  for (const tail of tailCandidates) {
+    const tailElfOptions = tail.needElf === 'any' ? ['elf1', 'elf2'] : [tail.needElf]
 
-    const nextAssignedElf = chain[pos + 1].assignedElf
-    const needElf = otherElf(nextAssignedElf)
+    for (const tailElf of tailElfOptions) {
+      const chain = new Array(N).fill(null)
+      chain[N - 1] = { person: tail, assignedElf: tailElf }
+      const used = new Set([tail.id])
+      if (headPerson) used.add(headPerson.id)
 
-    const candidates = people.filter((p) => {
-      if (used.has(p.id)) return false
-      return p.needElf === needElf || p.needElf === 'any'
-    })
+      function dfs(pos) {
+        if (pos < 0) return true
 
-    for (const c of candidates) {
-      chain[pos] = { person: c, assignedElf: needElf }
-      used.add(c.id)
-      if (dfs(pos - 1)) return true
-      used.delete(c.id)
-      chain[pos] = null
+        if (pos === 0 && headPerson) {
+          const nextElf = chain[1].assignedElf
+          const needElf = otherElf(nextElf)
+          if (headPerson.needElf === needElf || headPerson.needElf === 'any') {
+            chain[0] = { person: headPerson, assignedElf: needElf }
+            return true
+          }
+          return false
+        }
+
+        const nextAssignedElf = chain[pos + 1].assignedElf
+        const needElf = otherElf(nextAssignedElf)
+
+        const candidates = people.filter((p) => {
+          if (used.has(p.id)) return false
+          if (headPerson && p.id === headPerson.id) return false
+          return p.needElf === needElf || p.needElf === 'any'
+        })
+
+        for (const c of candidates) {
+          chain[pos] = { person: c, assignedElf: needElf }
+          used.add(c.id)
+          if (dfs(pos - 1)) return true
+          used.delete(c.id)
+          chain[pos] = null
+        }
+        return false
+      }
+
+      if (dfs(N - 2)) return chain
     }
-    return false
   }
 
-  if (dfs(N - 2)) return chain
   return null
 }
 
 /**
  * 核心：生成传火链条方案
- * @param {Array} people - [{ id, name, needElf, isTail }]  needElf: 'elf1'|'elf2'|'any'
+ * @param {Array} people - [{ id, name, needElf, isHead, isTail }]  needElf: 'elf1'|'elf2'|'any'
  * @param {string} tier - 'normal' | 'premium'
  * @param {Object} names - { elf1, elf2 }
  * @param {Array} friendMatrix - [[idA, idB], ...] 双向好友关系（仅用于提示）
