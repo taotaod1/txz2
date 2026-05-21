@@ -330,6 +330,8 @@ function buildResultCards(chain, price, friendMap) {
       totalCost: totalGamePayment,
       perPerson,
       netExpense: perPerson,
+      totalIn: Math.round(transfers.filter((t) => t.direction === 'in').reduce((s, t) => s + t.amount, 0) * 100) / 100,
+      totalOut: Math.round(transfers.filter((t) => t.direction === 'out').reduce((s, t) => s + t.amount, 0) * 100) / 100,
       items,
       transfers,
       friendHints,

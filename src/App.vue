@@ -336,12 +336,28 @@
                   :class="item.type"
                 >
                   <span class="cost-label">{{ item.label }}</span>
-                  <span v-if="item.type === 'expense'" class="cost-value">+{{ item.amount }} 元</span>
+                  <span v-if="item.type === 'expense'" class="cost-value expense">-{{ item.amount }} 元</span>
                   <span v-else-if="item.type === 'info-tag'" class="cost-value info">副券激活</span>
                 </div>
-                <div class="cost-row subtotal">
-                  <span class="cost-label">对游戏实际支付</span>
-                  <span class="cost-value">{{ card.gamePayment }} 元</span>
+              </div>
+
+              <div class="settle-summary">
+                <div class="settle-item">
+                  <span class="settle-label">游戏支付</span>
+                  <span class="settle-value expense">-{{ card.gamePayment }}</span>
+                </div>
+                <div v-if="card.totalIn > 0" class="settle-item">
+                  <span class="settle-label">收到转账</span>
+                  <span class="settle-value income">+{{ card.totalIn }}</span>
+                </div>
+                <div v-if="card.totalOut > 0" class="settle-item">
+                  <span class="settle-label">支出转账</span>
+                  <span class="settle-value expense">-{{ card.totalOut }}</span>
+                </div>
+                <div class="settle-equal">=</div>
+                <div class="settle-item settle-final">
+                  <span class="settle-label">净支出</span>
+                  <span class="settle-value expense">-{{ card.netExpense }}</span>
                 </div>
               </div>
 
@@ -363,12 +379,17 @@
                   class="transfer-item"
                   :class="t.direction"
                 >
-                  <span class="transfer-icon">{{ t.direction === 'out' ? '↗️' : '↙️' }}</span>
+                  <span class="transfer-icon">{{ t.direction === 'out' ? '💸' : '💰' }}</span>
                   <div class="transfer-info">
-                    <span class="transfer-action">
-                      {{ t.direction === 'out' ? `转给「${t.to}」` : `「${t.from}」转给你` }}
-                    </span>
-                    <span class="transfer-amount">{{ t.amount }} 元</span>
+                    <div class="transfer-line">
+                      <span class="transfer-action">
+                        {{ t.direction === 'out' ? `转给「${t.to}」` : `「${t.from}」转给你` }}
+                      </span>
+                      <span class="transfer-amount" :class="t.direction">
+                        {{ t.direction === 'out' ? '-' : '+' }}{{ t.amount }} 元
+                      </span>
+                    </div>
+                    <div v-if="t.reason" class="transfer-reason">{{ t.reason }}</div>
                   </div>
                 </div>
               </div>
@@ -1637,12 +1658,6 @@ body {
   background: rgba(0, 122, 255, 0.05);
 }
 
-.cost-row.subtotal {
-  background: rgba(255, 149, 0, 0.05);
-  border: 1px solid rgba(255, 149, 0, 0.12);
-  margin-top: 4px;
-}
-
 .cost-label {
   font-size: 14px;
   color: var(--ios-text);
@@ -1651,13 +1666,87 @@ body {
 .cost-value {
   font-size: 15px;
   font-weight: 600;
+  color: var(--ios-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-value.expense {
   color: var(--ios-red);
+}
+
+.cost-value.income {
+  color: var(--ios-green);
 }
 
 .cost-value.info {
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--ios-blue);
+}
+
+.settle-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: var(--ios-radius-sm);
+  background: var(--ios-fill);
+  border: 1px solid var(--ios-card-border);
+}
+
+.settle-item {
+  flex: 1 1 auto;
+  min-width: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--ios-radius-xs);
+  background: var(--ios-card-solid);
+}
+
+.settle-label {
+  font-size: 12px;
+  color: var(--ios-text-secondary);
+  font-weight: 500;
+}
+
+.settle-value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settle-value.expense {
+  color: var(--ios-red);
+}
+
+.settle-value.income {
+  color: var(--ios-green);
+}
+
+.settle-equal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ios-text-tertiary);
+  padding: 0 2px;
+}
+
+.settle-final {
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid rgba(255, 59, 48, 0.18);
+}
+
+.settle-final .settle-value {
+  font-size: 22px;
 }
 
 .net-row {
@@ -1704,7 +1793,7 @@ body {
 
 .transfer-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--ios-radius-xs);
@@ -1712,22 +1801,33 @@ body {
 }
 
 .transfer-item.out {
-  border-left: 3px solid var(--ios-orange);
+  background: rgba(255, 59, 48, 0.05);
+  border-left: 3px solid var(--ios-red);
 }
 
 .transfer-item.in {
+  background: rgba(52, 199, 89, 0.05);
   border-left: 3px solid var(--ios-green);
 }
 
 .transfer-icon {
   font-size: 18px;
+  line-height: 1.4;
 }
 
 .transfer-info {
   flex: 1;
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.transfer-line {
+  display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
 .transfer-action {
@@ -1737,9 +1837,26 @@ body {
 }
 
 .transfer-amount {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.3px;
   color: var(--ios-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.transfer-amount.out {
+  color: var(--ios-red);
+}
+
+.transfer-amount.in {
+  color: var(--ios-green);
+}
+
+.transfer-reason {
+  font-size: 12px;
+  color: var(--ios-text-secondary);
+  line-height: 1.4;
 }
 
 .friend-status-list {
@@ -2070,9 +2187,31 @@ body {
     gap: 8px;
   }
 
-  .transfer-info {
+  .transfer-line {
     flex-wrap: wrap;
     gap: 4px;
+  }
+
+  .settle-summary {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .settle-item {
+    min-width: 72px;
+    padding: 6px 8px;
+  }
+
+  .settle-value {
+    font-size: 16px;
+  }
+
+  .settle-final .settle-value {
+    font-size: 18px;
+  }
+
+  .settle-equal {
+    font-size: 16px;
   }
 }
 </style>
