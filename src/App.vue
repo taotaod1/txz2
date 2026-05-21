@@ -44,16 +44,13 @@
               <button class="ios-btn ios-btn-primary" @click="addPerson">
                 <span class="btn-icon">＋</span> 添加
               </button>
-              <button class="ios-btn ios-btn-secondary" @click="loadSampleData">
-                示例数据
-              </button>
             </div>
           </div>
 
           <div v-if="people.length === 0" class="empty-state">
             <div class="empty-icon">👤</div>
             <p class="empty-text">还没有添加人物</p>
-            <p class="empty-sub">点击「添加」或「示例数据」开始</p>
+            <p class="empty-sub">点击「添加」开始</p>
           </div>
 
           <TransitionGroup name="ios-list" tag="div" class="person-list">
@@ -116,26 +113,48 @@
         <section v-if="people.length >= 2" class="ios-card friend-section">
           <div class="section-header">
             <h2 class="section-title">🤝 好友关系</h2>
-            <button class="ios-btn ios-btn-secondary ios-btn-sm" @click="setAllFriends">
-              全选
-            </button>
+            <div class="section-actions">
+              <span class="friend-count">共 {{ friendCount }} 对好友</span>
+              <button class="ios-btn ios-btn-secondary ios-btn-sm" @click="clearAllFriends">
+                清空
+              </button>
+            </div>
           </div>
-          <p class="section-hint">勾选互为好友的组合，生成后会提示需加好友的对</p>
-          <div class="friend-grid">
-            <label
-              v-for="pair in friendPairs"
-              :key="pair.key"
-              class="friend-chip"
-              :class="{ active: isFriendPair(pair.idA, pair.idB) }"
-            >
-              <input
-                type="checkbox"
-                :checked="isFriendPair(pair.idA, pair.idB)"
-                @change="(e) => toggleFriend(pair.idA, pair.idB, e.target.checked)"
-                class="friend-checkbox"
-              />
-              <span class="friend-chip-text">{{ pair.nameA }} ↔ {{ pair.nameB }}</span>
-            </label>
+          <p class="section-hint">勾选单元格表示行与列对应的人互为好友，对角线不可选</p>
+          <div class="matrix-wrapper">
+            <table class="friend-matrix">
+              <thead>
+                <tr>
+                  <th class="matrix-corner"></th>
+                  <th v-for="p in people" :key="'h-' + p.id" class="matrix-header">
+                    <span class="matrix-name">{{ p.name || '—' }}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, ri) in people" :key="'r-' + row.id">
+                  <td class="matrix-row-header">
+                    <span class="matrix-name">{{ row.name || '—' }}</span>
+                  </td>
+                  <td
+                    v-for="(col, ci) in people"
+                    :key="'c-' + col.id"
+                    class="matrix-cell"
+                    :class="{
+                      'cell-diagonal': ri === ci,
+                      'cell-checked': ri !== ci && isFriendPair(row.id, col.id),
+                      'cell-hover': hoveredCell && ((hoveredCell.ri === ri && hoveredCell.ci === ci) || (hoveredCell.ri === ci && hoveredCell.ci === ri)),
+                    }"
+                    @click="ri !== ci && toggleFriendCell(row.id, col.id)"
+                    @mouseenter="hoveredCell = { ri, ci }"
+                    @mouseleave="hoveredCell = null"
+                  >
+                    <span v-if="ri === ci" class="cell-diagonal-mark">—</span>
+                    <span v-else-if="isFriendPair(row.id, col.id)" class="cell-check">✓</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -365,23 +384,17 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
   isDark.value = e.matches
 })
 
-const friendPairs = computed(() => {
-  const pairs = []
+const friendCount = computed(() => {
+  let count = 0
   for (let i = 0; i < people.length; i++) {
     for (let j = i + 1; j < people.length; j++) {
-      const a = people[i]
-      const b = people[j]
-      pairs.push({
-        key: `${a.id}-${b.id}`,
-        idA: a.id,
-        idB: b.id,
-        nameA: a.name || `人物${i + 1}`,
-        nameB: b.name || `人物${j + 1}`,
-      })
+      if (isFriendPair(people[i].id, people[j].id)) count++
     }
   }
-  return pairs
+  return count
 })
+
+const hoveredCell = ref(null)
 
 function getFriendKey(idA, idB) {
   return idA < idB ? `${idA}-${idB}` : `${idB}-${idA}`
@@ -391,21 +404,17 @@ function isFriendPair(idA, idB) {
   return !!friendships.get(getFriendKey(idA, idB))
 }
 
-function toggleFriend(idA, idB, val) {
+function toggleFriendCell(idA, idB) {
   const key = getFriendKey(idA, idB)
-  if (val) {
-    friendships.set(key, true)
-  } else {
+  if (friendships.has(key)) {
     friendships.delete(key)
+  } else {
+    friendships.set(key, true)
   }
 }
 
-function setAllFriends() {
-  for (let i = 0; i < people.length; i++) {
-    for (let j = i + 1; j < people.length; j++) {
-      friendships.set(getFriendKey(people[i].id, people[j].id), true)
-    }
-  }
+function clearAllFriends() {
+  friendships.clear()
 }
 
 function addPerson() {
@@ -445,23 +454,6 @@ function getElfName(elf) {
   if (elf === 'elf1') return elfName1.value || '精灵1'
   if (elf === 'elf2') return elfName2.value || '精灵2'
   return '都行'
-}
-
-function loadSampleData() {
-  people.length = 0
-  friendships.clear()
-  nextId = 1
-  const sample = [
-    { name: '小明', needElf: 'elf1', isHead: false, isTail: false },
-    { name: '小红', needElf: 'any', isHead: false, isTail: false },
-    { name: '小刚', needElf: 'elf1', isHead: false, isTail: true },
-  ]
-  sample.forEach((p) => { people.push({ id: nextId++, ...p }) })
-  friendships.set(getFriendKey(1, 2), true)
-  elfName1.value = '圣光独角兽'
-  elfName2.value = '暗影猎手'
-  planResult.value = null
-  errorMsg.value = ''
 }
 
 function resetAll() {
@@ -1001,42 +993,107 @@ body {
   transform: scale(0.88);
 }
 
-.friend-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.matrix-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
 }
 
-.friend-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 20px;
+.friend-matrix {
+  border-collapse: separate;
+  border-spacing: 3px;
+  margin: 0 auto;
+}
+
+.matrix-corner {
+  width: 48px;
+}
+
+.matrix-header {
+  padding: 6px 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ios-text);
+  background: var(--ios-fill);
+  border-radius: 6px;
+  min-width: 44px;
+}
+
+.matrix-row-header {
+  padding: 6px 10px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ios-text);
+  background: var(--ios-fill);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.matrix-name {
+  display: inline-block;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.matrix-cell {
+  width: 40px;
+  height: 40px;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s var(--ios-ease);
   background: var(--ios-fill);
   border: 1px solid var(--ios-card-border);
-  cursor: pointer;
-  transition: all 0.3s var(--ios-spring);
   user-select: none;
 }
 
-.friend-chip.active {
-  background: rgba(0, 122, 255, 0.1);
+.matrix-cell:hover:not(.cell-diagonal) {
+  background: var(--ios-fill-secondary);
+}
+
+.matrix-cell.cell-hover:not(.cell-diagonal) {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: rgba(0, 122, 255, 0.2);
+}
+
+.matrix-cell.cell-checked {
+  background: rgba(0, 122, 255, 0.12);
   border-color: rgba(0, 122, 255, 0.3);
 }
 
-.friend-checkbox {
-  display: none;
+.matrix-cell.cell-checked.cell-hover {
+  background: rgba(0, 122, 255, 0.18);
+  border-color: rgba(0, 122, 255, 0.4);
 }
 
-.friend-chip-text {
+.cell-diagonal {
+  cursor: default;
+  background: transparent;
+  border-color: transparent;
+}
+
+.cell-diagonal-mark {
+  color: var(--ios-text-tertiary);
   font-size: 14px;
-  font-weight: 500;
-  color: var(--ios-text);
 }
 
-.friend-chip.active .friend-chip-text {
+.cell-check {
   color: var(--ios-blue);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.friend-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ios-text-secondary);
+  margin-right: 8px;
 }
 
 .action-bar {
