@@ -364,96 +364,56 @@
                       <span>{{ card.person.name }}</span>
                       <span v-if="card.person.userId" class="result-user-id">#{{ card.person.userId }}</span>
                     </div>
-                    <div class="result-elf-badge">{{ card.myElfName }}</div>
+                    <div class="result-elf-badge">需要「{{ card.myElfName }}」</div>
                   </div>
                 </div>
                 <span class="role-badge" :class="card.role">{{ card.role }}</span>
               </div>
 
-              <div class="ios-divider"></div>
-
-              <div class="cost-list">
-                <div
+              <ul class="line-list">
+                <li
                   v-for="(item, idx) in card.items"
-                  :key="idx"
-                  class="cost-row"
+                  :key="'i' + idx"
+                  class="line-item"
                   :class="item.type"
                 >
-                  <span class="cost-label">{{ item.label }}</span>
-                  <span v-if="item.type === 'expense'" class="cost-value expense">-{{ item.amount }} 元</span>
-                  <span v-else-if="item.type === 'info-tag'" class="cost-value info">副券激活</span>
-                </div>
-              </div>
-
-              <div class="settle-summary">
-                <div class="settle-item">
-                  <span class="settle-label">游戏支付</span>
-                  <span class="settle-value expense">-{{ card.gamePayment }}</span>
-                </div>
-                <div v-if="card.totalIn > 0" class="settle-item">
-                  <span class="settle-label">收到转账</span>
-                  <span class="settle-value income">+{{ card.totalIn }}</span>
-                </div>
-                <div v-if="card.totalOut > 0" class="settle-item">
-                  <span class="settle-label">支出转账</span>
-                  <span class="settle-value expense">-{{ card.totalOut }}</span>
-                </div>
-                <div class="settle-equal">=</div>
-                <div class="settle-item settle-final">
-                  <span class="settle-label">净支出</span>
-                  <span class="settle-value expense">-{{ card.netExpense }}</span>
-                </div>
-              </div>
-
-              <div class="net-row">
-                <span class="net-label">最终均摊支出</span>
-                <span class="net-value">{{ card.netExpense }} 元</span>
-              </div>
-
-              <div class="ios-divider"></div>
-
-              <div class="transfer-section">
-                <div class="transfer-title">转账指令</div>
-                <div v-if="card.transfers.length === 0" class="transfer-none">
-                  无需额外转账
-                </div>
-                <div
+                  <span class="line-amount" :class="item.type === 'expense' ? 'expense' : 'info'">
+                    {{ item.type === 'expense' ? `-${item.amount}` : '副券' }}
+                  </span>
+                  <span class="line-label">{{ item.label }}</span>
+                </li>
+                <li
                   v-for="(t, idx) in card.transfers"
-                  :key="idx"
-                  class="transfer-item"
+                  :key="'t' + idx"
+                  class="line-item"
                   :class="t.direction"
                 >
-                  <span class="transfer-icon">{{ t.direction === 'out' ? '💸' : '💰' }}</span>
-                  <div class="transfer-info">
-                    <div class="transfer-line">
-                      <span class="transfer-action">
-                        {{ t.direction === 'out' ? `转给「${t.to}」` : `「${t.from}」转给你` }}
-                      </span>
-                      <span class="transfer-amount" :class="t.direction">
-                        {{ t.direction === 'out' ? '-' : '+' }}{{ t.amount }} 元
-                      </span>
-                    </div>
-                    <div v-if="t.reason" class="transfer-reason">{{ t.reason }}</div>
-                  </div>
-                </div>
+                  <span class="line-amount" :class="t.direction">
+                    {{ t.direction === 'out' ? '-' : '+' }}{{ t.amount }}
+                  </span>
+                  <span class="line-label">
+                    {{ t.direction === 'out' ? `转给 ${t.to}` : `${t.from} 转给你` }}
+                    <span v-if="t.reason" class="line-note">· {{ t.reason }}</span>
+                  </span>
+                </li>
+              </ul>
+
+              <div class="net-summary">
+                <span class="net-summary-label">净支出</span>
+                <span class="net-summary-value">{{ card.netExpense }} 元</span>
               </div>
 
-              <div class="ios-divider"></div>
-
-              <div class="friend-status">
-                <div class="friend-status-title">好友状态</div>
-                <div class="friend-status-list">
-                  <div
-                    v-for="(h, idx) in card.friendHints"
-                    :key="idx"
-                    class="friend-status-item"
-                    :class="h.isFriend ? 'ok' : 'need'"
-                  >
-                    <span class="friend-status-icon">{{ h.isFriend ? '✅' : '⚠️' }}</span>
-                    <span>{{ h.type === 'prev' ? '上家' : '下家' }}：{{ h.name }}</span>
-                    <span class="friend-status-label">{{ h.isFriend ? '已是好友' : '需加好友' }}</span>
-                  </div>
-                </div>
+              <div v-if="card.friendHints.length > 0" class="friend-chips">
+                <span
+                  v-for="(h, idx) in card.friendHints"
+                  :key="idx"
+                  class="friend-chip"
+                  :class="h.isFriend ? 'ok' : 'need'"
+                >
+                  <span class="friend-chip-icon">{{ h.isFriend ? '✓' : '!' }}</span>
+                  {{ h.type === 'prev' ? '上家' : '下家' }} {{ h.name }}
+                  <span v-if="!h.isFriend" class="friend-chip-tag">需加好友</span>
+                </span>
               </div>
             </section>
 
@@ -1909,267 +1869,146 @@ body {
   margin: 14px 0;
 }
 
-.cost-list {
+.line-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
-.cost-row {
+.line-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--ios-separator);
+}
+
+.line-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.line-amount {
+  flex: 0 0 auto;
+  min-width: 72px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ios-text);
+}
+
+.line-amount.expense,
+.line-amount.out {
+  color: var(--ios-red);
+}
+
+.line-amount.in {
+  color: var(--ios-green);
+}
+
+.line-amount.info {
+  color: var(--ios-blue);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.line-label {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ios-text);
+  word-break: break-word;
+}
+
+.line-item.info-tag .line-label {
+  color: var(--ios-text-secondary);
+}
+
+.line-note {
+  font-size: 12px;
+  color: var(--ios-text-tertiary);
+  margin-left: 4px;
+}
+
+.net-summary {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: var(--ios-radius-xs);
-  background: var(--ios-fill);
-}
-
-.cost-row.info-tag {
-  background: rgba(0, 122, 255, 0.05);
-}
-
-.cost-label {
-  font-size: 14px;
-  color: var(--ios-text);
-}
-
-.cost-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ios-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.cost-value.expense {
-  color: var(--ios-red);
-}
-
-.cost-value.income {
-  color: var(--ios-green);
-}
-
-.cost-value.info {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ios-blue);
-}
-
-.settle-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 8px;
-  padding: 12px;
+  align-items: baseline;
+  padding: 12px 14px;
   margin-top: 12px;
   border-radius: var(--ios-radius-sm);
-  background: var(--ios-fill);
-  border: 1px solid var(--ios-card-border);
-}
-
-.settle-item {
-  flex: 1 1 auto;
-  min-width: 84px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: var(--ios-radius-xs);
-  background: var(--ios-card-solid);
-}
-
-.settle-label {
-  font-size: 12px;
-  color: var(--ios-text-secondary);
-  font-weight: 500;
-}
-
-.settle-value {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  font-variant-numeric: tabular-nums;
-}
-
-.settle-value.expense {
-  color: var(--ios-red);
-}
-
-.settle-value.income {
-  color: var(--ios-green);
-}
-
-.settle-equal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--ios-text-tertiary);
-  padding: 0 2px;
-}
-
-.settle-final {
   background: rgba(255, 59, 48, 0.08);
   border: 1px solid rgba(255, 59, 48, 0.18);
 }
 
-.settle-final .settle-value {
-  font-size: 22px;
-}
-
-.net-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  border-radius: var(--ios-radius-sm);
-  background: linear-gradient(135deg, var(--ios-blue), var(--ios-purple));
-  color: #fff;
-  margin-top: 4px;
-}
-
-.net-label {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.net-value {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-.transfer-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.transfer-title,
-.friend-status-title {
-  font-size: 14px;
+.net-summary-label {
+  font-size: 13px;
   font-weight: 600;
   color: var(--ios-text-secondary);
-  margin-bottom: 4px;
 }
 
-.transfer-none {
-  font-size: 14px;
-  color: var(--ios-text-tertiary);
-  padding: 8px 0;
-}
-
-.transfer-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--ios-radius-xs);
-  background: var(--ios-fill);
-}
-
-.transfer-item.out {
-  background: rgba(255, 59, 48, 0.05);
-  border-left: 3px solid var(--ios-red);
-}
-
-.transfer-item.in {
-  background: rgba(52, 199, 89, 0.05);
-  border-left: 3px solid var(--ios-green);
-}
-
-.transfer-icon {
-  font-size: 18px;
-  line-height: 1.4;
-}
-
-.transfer-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.transfer-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.transfer-action {
-  font-size: 14px;
-  color: var(--ios-text);
-  font-weight: 500;
-}
-
-.transfer-amount {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--ios-text);
+.net-summary-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ios-red);
+  letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
+}
+
+.friend-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.friend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
-.transfer-amount.out {
-  color: var(--ios-red);
-}
-
-.transfer-amount.in {
-  color: var(--ios-green);
-}
-
-.transfer-reason {
-  font-size: 12px;
-  color: var(--ios-text-secondary);
-  line-height: 1.4;
-}
-
-.friend-status-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.friend-status-item {
-  display: flex;
+.friend-chip-icon {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: var(--ios-radius-xs);
-  font-size: 14px;
-  color: var(--ios-text);
-  background: var(--ios-fill);
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
 }
 
-.friend-status-item.ok {
-  background: rgba(52, 199, 89, 0.05);
-}
-
-.friend-status-item.need {
-  background: rgba(255, 149, 0, 0.05);
-}
-
-.friend-status-icon {
-  font-size: 16px;
-}
-
-.friend-status-label {
-  margin-left: auto;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.friend-status-item.ok .friend-status-label {
+.friend-chip.ok {
+  background: rgba(52, 199, 89, 0.1);
   color: var(--ios-green);
 }
 
-.friend-status-item.need .friend-status-label {
+.friend-chip.ok .friend-chip-icon {
+  background: var(--ios-green);
+}
+
+.friend-chip.need {
+  background: rgba(255, 149, 0, 0.1);
   color: var(--ios-orange);
+}
+
+.friend-chip.need .friend-chip-icon {
+  background: var(--ios-orange);
+}
+
+.friend-chip-tag {
+  font-weight: 600;
+  margin-left: 2px;
 }
 
 .ios-list-enter-active {
@@ -2446,31 +2285,31 @@ body {
     gap: 8px;
   }
 
-  .transfer-line {
-    flex-wrap: wrap;
-    gap: 4px;
+  .line-item {
+    gap: 8px;
+    padding: 6px 0;
   }
 
-  .settle-summary {
-    padding: 10px;
-    gap: 6px;
+  .line-amount {
+    min-width: 60px;
+    font-size: 14px;
   }
 
-  .settle-item {
-    min-width: 72px;
-    padding: 6px 8px;
+  .line-label {
+    font-size: 13px;
   }
 
-  .settle-value {
-    font-size: 16px;
+  .line-note {
+    display: block;
+    margin-left: 0;
   }
 
-  .settle-final .settle-value {
-    font-size: 18px;
+  .net-summary {
+    padding: 10px 12px;
   }
 
-  .settle-equal {
-    font-size: 16px;
+  .net-summary-value {
+    font-size: 20px;
   }
 }
 </style>
