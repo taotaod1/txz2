@@ -1,7 +1,36 @@
 <template>
   <div class="app-container" :class="{ 'dark-mode': isDark }">
     <div class="app-content">
-      <div class="content-wrapper">
+
+      <header class="app-header ios-card">
+        <div class="app-title">
+          <span class="app-title-icon">🔥</span>
+          <span class="app-title-text">洛克王国通行证拼团结算</span>
+        </div>
+        <div class="app-header-actions">
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept="application/json,.json"
+            style="display: none"
+            @change="handleImportConfig"
+          />
+          <button class="ios-btn ios-btn-secondary ios-btn-sm" @click="triggerImportConfig">
+            <span class="btn-icon">📥</span><span class="btn-text">导入</span>
+          </button>
+          <button
+            class="ios-btn ios-btn-secondary ios-btn-sm"
+            :disabled="people.length === 0"
+            @click="exportConfig"
+          >
+            <span class="btn-icon">📤</span><span class="btn-text">导出</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-wrapper" :class="{ 'has-result': planResult && planResult.success }">
+
+        <div class="config-column">
 
         <section class="ios-card config-section">
           <div class="section-header">
@@ -181,6 +210,20 @@
           </div>
         </Transition>
 
+        <Transition name="ios-alert">
+          <div v-if="importToast" class="ios-alert ios-alert-success">
+            <div class="alert-content">
+              <span class="alert-icon">✅</span>
+              <span class="alert-text">{{ importToast }}</span>
+            </div>
+            <button class="alert-close" @click="importToast = ''">✕</button>
+          </div>
+        </Transition>
+
+        </div>
+
+        <div class="result-column">
+
         <TransitionGroup name="ios-card-anim" tag="div" class="result-section">
           <template v-if="planResult && planResult.success">
 
@@ -354,6 +397,8 @@
           </template>
         </TransitionGroup>
 
+        </div>
+
       </div>
     </div>
   </div>
@@ -374,8 +419,10 @@ const people = reactive([])
 const friendships = reactive(new Map())
 const planResult = ref(null)
 const errorMsg = ref('')
+const importToast = ref('')
 const exporting = ref(false)
 const exportContainer = ref(null)
+const fileInputRef = ref(null)
 
 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
   isDark.value = true
@@ -489,6 +536,129 @@ function doGenerate() {
   )
   if (!result.success) { errorMsg.value = result.error; return }
   planResult.value = result
+}
+
+function exportConfig() {
+  if (people.length === 0) return
+  const config = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    tier: tier.value,
+    elfName1: elfName1.value,
+    elfName2: elfName2.value,
+    people: people.map((p) => ({
+      id: p.id,
+      name: p.name,
+      needElf: p.needElf,
+      isHead: !!p.isHead,
+      isTail: !!p.isTail,
+    })),
+    friendships: Array.from(friendships.keys()).map((k) => k.split('-').map(Number)),
+  }
+  try {
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')
+    link.download = `传火配置_${stamp}.json`
+    link.href = url
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    showImportToast(`已导出 ${people.length} 人配置`)
+  } catch (e) {
+    errorMsg.value = '导出配置失败：' + (e?.message || e)
+  }
+}
+
+function triggerImportConfig() {
+  if (fileInputRef.value) fileInputRef.value.click()
+}
+
+function handleImportConfig(event) {
+  const file = event.target.files && event.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const text = String(e.target.result || '')
+      const config = JSON.parse(text)
+      const summary = applyConfig(config)
+      errorMsg.value = ''
+      showImportToast(`已导入 ${summary.peopleCount} 人、${summary.friendCount} 对好友关系`)
+    } catch (err) {
+      errorMsg.value = '导入失败：' + (err?.message || err)
+    }
+  }
+  reader.onerror = () => {
+    errorMsg.value = '导入失败：无法读取文件'
+  }
+  reader.readAsText(file, 'utf-8')
+  event.target.value = ''
+}
+
+function applyConfig(config) {
+  if (!config || typeof config !== 'object') {
+    throw new Error('配置文件格式无效')
+  }
+  if (config.tier === 'normal' || config.tier === 'premium') {
+    tier.value = config.tier
+  }
+  if (typeof config.elfName1 === 'string') elfName1.value = config.elfName1
+  if (typeof config.elfName2 === 'string') elfName2.value = config.elfName2
+
+  people.length = 0
+  let maxId = 0
+  const idMap = new Map()
+  if (Array.isArray(config.people)) {
+    for (const p of config.people) {
+      if (!p || typeof p !== 'object') continue
+      const originalId = Number(p.id)
+      const newId = Number.isFinite(originalId) && originalId > 0 ? originalId : maxId + 1
+      if (idMap.has(newId)) continue
+      idMap.set(originalId, newId)
+      maxId = Math.max(maxId, newId)
+      const needElf = ['elf1', 'elf2', 'any'].includes(p.needElf) ? p.needElf : 'elf1'
+      people.push({
+        id: newId,
+        name: typeof p.name === 'string' ? p.name : '',
+        needElf,
+        isHead: !!p.isHead,
+        isTail: !!p.isTail,
+      })
+    }
+  }
+  nextId = maxId + 1
+
+  const headList = people.filter((p) => p.isHead)
+  if (headList.length > 1) headList.slice(1).forEach((p) => (p.isHead = false))
+  const tailList = people.filter((p) => p.isTail)
+  if (tailList.length > 1) tailList.slice(1).forEach((p) => (p.isTail = false))
+
+  friendships.clear()
+  if (Array.isArray(config.friendships)) {
+    const validIds = new Set(people.map((p) => p.id))
+    for (const pair of config.friendships) {
+      if (!Array.isArray(pair) || pair.length !== 2) continue
+      const a = Number(pair[0])
+      const b = Number(pair[1])
+      if (!validIds.has(a) || !validIds.has(b) || a === b) continue
+      friendships.set(getFriendKey(a, b), true)
+    }
+  }
+
+  planResult.value = null
+  return { peopleCount: people.length, friendCount: friendships.size }
+}
+
+let toastTimer = null
+function showImportToast(msg) {
+  importToast.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    importToast.value = ''
+  }, 2800)
 }
 
 async function exportAllCards() {
@@ -635,6 +805,64 @@ body {
   max-width: 680px;
   margin: 0 auto;
   padding: 20px 16px 48px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-title-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.app-title-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ios-text);
+  letter-spacing: -0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.app-header-actions .ios-btn-sm {
+  padding: 7px 14px;
+}
+
+.app-header-actions .ios-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.config-column,
+.result-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .ios-card {
@@ -1128,6 +1356,11 @@ body {
 .ios-alert-warning {
   background: rgba(255, 149, 0, 0.08);
   border: 1px solid rgba(255, 149, 0, 0.15);
+}
+
+.ios-alert-success {
+  background: rgba(52, 199, 89, 0.1);
+  border: 1px solid rgba(52, 199, 89, 0.2);
 }
 
 .alert-content {
@@ -1656,9 +1889,96 @@ body {
   font-weight: 600;
 }
 
+@media (min-width: 1024px) {
+  .app-content {
+    max-width: 1280px;
+    padding: 24px 28px 56px;
+  }
+
+  .app-title-text {
+    font-size: 19px;
+  }
+
+  .content-wrapper.has-result {
+    display: grid;
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .content-wrapper.has-result .config-column {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+  }
+
+  .content-wrapper.has-result .config-column::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .content-wrapper.has-result .config-column::-webkit-scrollbar-thumb {
+    background: var(--ios-fill-secondary);
+    border-radius: 3px;
+  }
+
+  .content-wrapper:not(.has-result) .config-column {
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .person-fields {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 1440px) {
+  .app-content {
+    max-width: 1440px;
+  }
+
+  .content-wrapper.has-result {
+    grid-template-columns: minmax(0, 500px) minmax(0, 1fr);
+    gap: 32px;
+  }
+}
+
 @media (max-width: 640px) {
   .app-content {
     padding: 12px 12px 40px;
+  }
+
+  .app-header {
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+
+  .app-title-text {
+    font-size: 15px;
+  }
+
+  .app-title-icon {
+    font-size: 20px;
+  }
+
+  .app-header-actions .ios-btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .app-header-actions .btn-text {
+    display: none;
+  }
+
+  .app-header-actions .btn-icon {
+    font-size: 15px;
   }
 
   .ios-card {
@@ -1666,8 +1986,13 @@ body {
     border-radius: 14px;
   }
 
+  .section-title {
+    font-size: 18px;
+  }
+
   .person-fields {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .name-field,
@@ -1676,8 +2001,26 @@ body {
     min-width: 0;
   }
 
+  .head-field,
+  .tail-field {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .head-field .field-label,
+  .tail-field .field-label {
+    margin-bottom: 0;
+  }
+
   .segment-btn {
     padding: 12px 8px;
+  }
+
+  .elf-name-row {
+    flex-direction: column;
+    gap: 10px;
   }
 
   .stat-grid {
@@ -1701,6 +2044,35 @@ body {
     width: 36px;
     height: 36px;
     font-size: 15px;
+  }
+
+  .matrix-name {
+    max-width: 48px;
+    font-size: 12px;
+  }
+
+  .matrix-cell {
+    width: 34px;
+    height: 34px;
+  }
+
+  .action-bar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .action-bar .ios-btn-large {
+    width: 100%;
+  }
+
+  .result-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .transfer-info {
+    flex-wrap: wrap;
+    gap: 4px;
   }
 }
 </style>
