@@ -12,6 +12,7 @@
 - 💰 **费用自动结算**：根据档次（普通 68 元 / 高级 128 元）自动计算总价、人均费用、差额平摊和每人的转账指令（向谁转多少、原因）。
 - 📊 **方案卡片可视化**：每位成员一张卡片，包含角色（源头 / 中间人 / 车尾）、所购通行证、应收应付明细、好友状态。
 - 🖼️ **一键导出图片**：基于 `html2canvas` 将完整方案导出为 PNG 图片，方便群内分享。
+- 🪪 **可选头像与 ID**：每位成员可粘贴（Ctrl+V）/ 上传图片设置头像，自动等比压缩至 128 × 128；可填入自定义 ID / 备注，会在链条与卡片上一并显示。
 - 💾 **配置导入 / 导出**：将当前人员、好友关系、档次等配置保存为 JSON 文件，下次直接导入复用，跨设备 / 长期方案管理无忧。
 - 📱 **响应式适配**：手机端紧凑单列、PC 端宽屏双列布局（左侧表单常驻，右侧结果卡片），自动跟随系统深色模式。
 
@@ -95,9 +96,9 @@ npm run preview
   "elfName1": "迪莫",
   "elfName2": "亚比",
   "people": [
-    { "id": 1, "name": "张三", "needElf": "elf1", "isHead": true,  "isTail": false },
-    { "id": 2, "name": "李四", "needElf": "elf2", "isHead": false, "isTail": false },
-    { "id": 3, "name": "王五", "needElf": "any",  "isHead": false, "isTail": true  }
+    { "id": 1, "name": "张三", "userId": "QQ123",  "avatar": "data:image/jpeg;base64,...", "needElf": "elf1", "isHead": true,  "isTail": false },
+    { "id": 2, "name": "李四", "userId": "",       "avatar": "",                          "needElf": "elf2", "isHead": false, "isTail": false },
+    { "id": 3, "name": "王五", "userId": "wuwang", "avatar": "",                          "needElf": "any",  "isHead": false, "isTail": true  }
   ],
   "friendships": [[1, 2], [2, 3]]
 }
@@ -105,6 +106,8 @@ npm run preview
 
 - `tier`：档次，可选 `normal` / `premium`
 - `needElf`：精灵需求，可选 `elf1` / `elf2` / `any`
+- `userId`：可选字段，自定义的 ID 或备注（如游戏 ID、QQ 号）
+- `avatar`：可选字段，`data:image/...` 形式的图片 data URL；导入时仅接受合法图片 data URL，其他值会被清空
 - `friendships`：双向好友对，元素为 `[idA, idB]`，使用 `people` 中的 `id` 进行关联
 
 导入时会进行结构校验与 id 合法性检查，非法字段会被忽略而非中断流程。

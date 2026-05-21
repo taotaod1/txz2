@@ -82,16 +82,48 @@
             <p class="empty-sub">点击「添加」开始</p>
           </div>
 
+          <input
+            ref="avatarInputRef"
+            type="file"
+            accept="image/*"
+            style="display: none"
+            @change="handleAvatarFileSelected"
+          />
           <TransitionGroup name="ios-list" tag="div" class="person-list">
             <div
               v-for="(person, index) in people"
               :key="person.id"
               class="person-row"
             >
+              <div
+                class="person-avatar-slot"
+                :class="{ 'has-image': person.avatar }"
+                :style="person.avatar ? { backgroundImage: `url(${person.avatar})` } : null"
+                tabindex="0"
+                :title="person.avatar ? '点击更换 / 粘贴图片 / Delete 清除' : '点击上传 / 粘贴图片设置头像'"
+                @click="triggerAvatarPicker(person)"
+                @paste="handleAvatarPaste($event, person)"
+                @keydown.delete.prevent="clearAvatar(person)"
+                @keydown.backspace.prevent="clearAvatar(person)"
+              >
+                <span v-if="!person.avatar" class="avatar-empty">
+                  <span class="avatar-empty-icon">＋</span>
+                </span>
+                <button
+                  v-if="person.avatar"
+                  class="avatar-clear"
+                  title="清除头像"
+                  @click.stop="clearAvatar(person)"
+                >✕</button>
+              </div>
               <div class="person-fields">
                 <div class="person-field name-field">
                   <label class="field-label">姓名</label>
                   <input v-model="person.name" placeholder="输入姓名" class="ios-input" />
+                </div>
+                <div class="person-field user-id-field">
+                  <label class="field-label">ID（选填）</label>
+                  <input v-model="person.userId" placeholder="游戏 ID / 备注" class="ios-input" />
                 </div>
                 <div class="person-field elf-field">
                   <label class="field-label">需求精灵</label>
@@ -271,10 +303,15 @@
               <div class="chain-flow">
                 <template v-for="(item, idx) in planResult.chainWithElf" :key="item.person.id">
                   <div class="chain-node">
-                    <div class="chain-avatar" :class="idx === 0 ? 'head' : idx === planResult.chainWithElf.length - 1 ? 'tail' : 'mid'">
-                      {{ item.person.name.charAt(0) }}
+                    <div
+                      class="chain-avatar"
+                      :class="[idx === 0 ? 'head' : idx === planResult.chainWithElf.length - 1 ? 'tail' : 'mid', { 'has-image': item.person.avatar }]"
+                      :style="item.person.avatar ? { backgroundImage: `url(${item.person.avatar})` } : null"
+                    >
+                      <span v-if="!item.person.avatar">{{ (item.person.name || '?').charAt(0) }}</span>
                     </div>
                     <div class="chain-name">{{ item.person.name }}</div>
+                    <div v-if="item.person.userId" class="chain-user-id">#{{ item.person.userId }}</div>
                     <div class="chain-elf">{{ getElfName(item.assignedElf) }}</div>
                   </div>
                   <div v-if="idx < planResult.chainWithElf.length - 1" class="chain-arrow">
@@ -315,11 +352,18 @@
             >
               <div class="result-header">
                 <div class="result-identity">
-                  <div class="result-avatar" :class="card.role === '源头' ? 'head' : card.role === '车尾' ? 'tail' : 'mid'">
-                    {{ card.person.name.charAt(0) }}
+                  <div
+                    class="result-avatar"
+                    :class="[card.role === '源头' ? 'head' : card.role === '车尾' ? 'tail' : 'mid', { 'has-image': card.person.avatar }]"
+                    :style="card.person.avatar ? { backgroundImage: `url(${card.person.avatar})` } : null"
+                  >
+                    <span v-if="!card.person.avatar">{{ (card.person.name || '?').charAt(0) }}</span>
                   </div>
                   <div>
-                    <div class="result-name">{{ card.person.name }}</div>
+                    <div class="result-name">
+                      <span>{{ card.person.name }}</span>
+                      <span v-if="card.person.userId" class="result-user-id">#{{ card.person.userId }}</span>
+                    </div>
                     <div class="result-elf-badge">{{ card.myElfName }}</div>
                   </div>
                 </div>
@@ -444,6 +488,8 @@ const importToast = ref('')
 const exporting = ref(false)
 const exportContainer = ref(null)
 const fileInputRef = ref(null)
+const avatarInputRef = ref(null)
+let avatarTargetId = null
 
 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
   isDark.value = true
@@ -486,7 +532,7 @@ function clearAllFriends() {
 }
 
 function addPerson() {
-  people.push({ id: nextId++, name: '', needElf: 'elf1', isHead: false, isTail: false })
+  people.push({ id: nextId++, name: '', userId: '', avatar: '', needElf: 'elf1', isHead: false, isTail: false })
 }
 
 function removePerson(index) {
@@ -559,6 +605,93 @@ function doGenerate() {
   planResult.value = result
 }
 
+function triggerAvatarPicker(person) {
+  avatarTargetId = person.id
+  if (avatarInputRef.value) {
+    avatarInputRef.value.value = ''
+    avatarInputRef.value.click()
+  }
+}
+
+async function handleAvatarFileSelected(event) {
+  const file = event.target.files && event.target.files[0]
+  event.target.value = ''
+  if (!file || !file.type.startsWith('image/')) {
+    if (file) errorMsg.value = '请选择图片文件'
+    return
+  }
+  const person = people.find((p) => p.id === avatarTargetId)
+  if (!person) return
+  try {
+    person.avatar = await fileToCompressedAvatar(file)
+  } catch (e) {
+    errorMsg.value = '头像处理失败：' + (e?.message || e)
+  }
+}
+
+async function handleAvatarPaste(event, person) {
+  const items = event.clipboardData && event.clipboardData.items
+  if (!items) return
+  for (const item of items) {
+    if (item.type && item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) {
+        event.preventDefault()
+        try {
+          person.avatar = await fileToCompressedAvatar(file)
+        } catch (e) {
+          errorMsg.value = '头像处理失败：' + (e?.message || e)
+        }
+        return
+      }
+    }
+  }
+}
+
+function clearAvatar(person) {
+  person.avatar = ''
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => resolve(String(e.target.result || ''))
+    reader.onerror = () => reject(new Error('读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function fileToCompressedAvatar(file, maxSize = 128) {
+  const dataUrl = await fileToDataUrl(file)
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const w0 = img.naturalWidth || img.width
+      const h0 = img.naturalHeight || img.height
+      if (!w0 || !h0) {
+        resolve(dataUrl)
+        return
+      }
+      const side = Math.min(w0, h0)
+      const sx = (w0 - side) / 2
+      const sy = (h0 - side) / 2
+      const target = Math.min(maxSize, side)
+      const canvas = document.createElement('canvas')
+      canvas.width = target
+      canvas.height = target
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, target, target)
+      try {
+        resolve(canvas.toDataURL('image/jpeg', 0.85))
+      } catch {
+        resolve(dataUrl)
+      }
+    }
+    img.onerror = () => resolve(dataUrl)
+    img.src = dataUrl
+  })
+}
+
 function exportConfig() {
   if (people.length === 0) return
   const config = {
@@ -570,6 +703,8 @@ function exportConfig() {
     people: people.map((p) => ({
       id: p.id,
       name: p.name,
+      userId: p.userId || '',
+      avatar: p.avatar || '',
       needElf: p.needElf,
       isHead: !!p.isHead,
       isTail: !!p.isTail,
@@ -641,9 +776,12 @@ function applyConfig(config) {
       idMap.set(originalId, newId)
       maxId = Math.max(maxId, newId)
       const needElf = ['elf1', 'elf2', 'any'].includes(p.needElf) ? p.needElf : 'elf1'
+      const avatar = typeof p.avatar === 'string' && p.avatar.startsWith('data:image/') ? p.avatar : ''
       people.push({
         id: newId,
         name: typeof p.name === 'string' ? p.name : '',
+        userId: typeof p.userId === 'string' ? p.userId : '',
+        avatar,
         needElf,
         isHead: !!p.isHead,
         isTail: !!p.isTail,
@@ -1115,6 +1253,84 @@ body {
   background: var(--ios-fill-secondary);
 }
 
+.person-avatar-slot {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ios-card-solid);
+  border: 1.5px dashed var(--ios-card-border);
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s var(--ios-ease);
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.person-avatar-slot:hover {
+  border-color: var(--ios-blue);
+  background-color: rgba(0, 122, 255, 0.04);
+}
+
+.person-avatar-slot:focus-visible {
+  border-style: solid;
+  border-color: var(--ios-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18);
+}
+
+.person-avatar-slot.has-image {
+  border-style: solid;
+  border-color: var(--ios-card-border);
+}
+
+.avatar-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ios-text-tertiary);
+}
+
+.avatar-empty-icon {
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.avatar-clear {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s var(--ios-ease);
+}
+
+.person-avatar-slot.has-image:hover .avatar-clear,
+.person-avatar-slot:focus-visible .avatar-clear {
+  opacity: 1;
+}
+
+.user-id-field {
+  width: 140px;
+  flex-shrink: 0;
+}
+
 .person-fields {
   flex: 1;
   display: flex;
@@ -1539,6 +1755,24 @@ body {
   background: linear-gradient(135deg, #63E6BE, #34C759);
 }
 
+.chain-avatar.has-image {
+  background-size: cover;
+  background-position: center;
+  color: transparent;
+}
+
+.chain-avatar.has-image.head {
+  box-shadow: 0 0 0 2px var(--ios-red);
+}
+
+.chain-avatar.has-image.mid {
+  box-shadow: 0 0 0 2px var(--ios-blue);
+}
+
+.chain-avatar.has-image.tail {
+  box-shadow: 0 0 0 2px var(--ios-green);
+}
+
 .chain-node:hover .chain-avatar {
   transform: scale(1.1);
 }
@@ -1547,6 +1781,13 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: var(--ios-text);
+}
+
+.chain-user-id {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ios-text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .chain-elf {
@@ -1599,10 +1840,39 @@ body {
 .result-avatar.mid { background: linear-gradient(135deg, #5AC8FA, #007AFF); }
 .result-avatar.tail { background: linear-gradient(135deg, #63E6BE, #34C759); }
 
+.result-avatar.has-image {
+  background-size: cover;
+  background-position: center;
+  color: transparent;
+}
+
+.result-avatar.has-image.head {
+  box-shadow: 0 0 0 2px var(--ios-red);
+}
+
+.result-avatar.has-image.mid {
+  box-shadow: 0 0 0 2px var(--ios-blue);
+}
+
+.result-avatar.has-image.tail {
+  box-shadow: 0 0 0 2px var(--ios-green);
+}
+
 .result-name {
   font-size: 18px;
   font-weight: 700;
   color: var(--ios-text);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.result-user-id {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ios-text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .result-elf-badge {
@@ -2095,9 +2365,16 @@ body {
   }
 
   .name-field,
-  .elf-field {
+  .elf-field,
+  .user-id-field {
     width: 100%;
     min-width: 0;
+  }
+
+  .person-avatar-slot {
+    width: 48px;
+    height: 48px;
+    margin-top: 16px;
   }
 
   .head-field,
