@@ -49,7 +49,7 @@ function areFriends(friendMap, idA, idB) {
  * chain 中每项为 { person, assignedElf }
  * @returns {Array|null}
  */
-function searchChain(people) {
+function searchChain(people, friendMap) {
   const N = people.length
   const headPerson = people.find((p) => p.isHead)
   const tailPerson = people.find((p) => p.isTail)
@@ -57,6 +57,9 @@ function searchChain(people) {
   const tailCandidates = tailPerson
     ? [tailPerson]
     : people.filter((p) => !headPerson || p.id !== headPerson.id)
+
+  let bestChain = null
+  let bestScore = -1
 
   for (const tail of tailCandidates) {
     const tailElfOptions = tail.needElf === 'any' ? ['elf1', 'elf2'] : [tail.needElf]
@@ -67,19 +70,28 @@ function searchChain(people) {
       const used = new Set([tail.id])
       if (headPerson) used.add(headPerson.id)
 
-      function dfs(pos) {
-        if (pos < 0) return true
+      function dfs(pos, friendEdgeCount) {
+        if (pos < 0) {
+          if (friendEdgeCount > bestScore) {
+            bestScore = friendEdgeCount
+            bestChain = chain.map((c) => ({ person: c.person, assignedElf: c.assignedElf }))
+          }
+          return
+        }
 
         if (pos === 0 && headPerson) {
           const nextElf = chain[1].assignedElf
           const needElf = otherElf(nextElf)
           if (headPerson.needElf === needElf || headPerson.needElf === 'any') {
             chain[0] = { person: headPerson, assignedElf: needElf }
-            return true
+            const isFriendEdge = areFriends(friendMap, headPerson.id, chain[1].person.id)
+            dfs(-1, friendEdgeCount + (isFriendEdge ? 1 : 0))
+            chain[0] = null
           }
-          return false
+          return
         }
 
+        const nextPerson = chain[pos + 1].person
         const nextAssignedElf = chain[pos + 1].assignedElf
         const needElf = otherElf(nextAssignedElf)
 
@@ -89,21 +101,30 @@ function searchChain(people) {
           return p.needElf === needElf || p.needElf === 'any'
         })
 
-        for (const c of candidates) {
+        const sorted = candidates.sort((a, b) => {
+          const aFriend = areFriends(friendMap, a.id, nextPerson.id) ? 1 : 0
+          const bFriend = areFriends(friendMap, b.id, nextPerson.id) ? 1 : 0
+          return bFriend - aFriend
+        })
+
+        const maxPossibleRemaining = pos
+        if (friendEdgeCount + maxPossibleRemaining + 1 <= bestScore) return
+
+        for (const c of sorted) {
+          const isFriendEdge = areFriends(friendMap, c.id, nextPerson.id)
           chain[pos] = { person: c, assignedElf: needElf }
           used.add(c.id)
-          if (dfs(pos - 1)) return true
+          dfs(pos - 1, friendEdgeCount + (isFriendEdge ? 1 : 0))
           used.delete(c.id)
           chain[pos] = null
         }
-        return false
       }
 
-      if (dfs(N - 2)) return chain
+      dfs(N - 2, 0)
     }
   }
 
-  return null
+  return bestChain
 }
 
 /**
@@ -122,7 +143,9 @@ export function generatePlan(people, tier, names, friendMatrix) {
     return { success: false, error: validation.error }
   }
 
-  const chain = searchChain(people)
+  const friendMap = buildFriendshipMap(people, friendMatrix)
+
+  const chain = searchChain(people, friendMap)
 
   if (!chain) {
     const elf1Count = people.filter((p) => p.needElf === 'elf1').length
@@ -137,7 +160,6 @@ export function generatePlan(people, tier, names, friendMatrix) {
     }
   }
 
-  const friendMap = buildFriendshipMap(people, friendMatrix)
   const price = PRICE[tier]
   const resultCards = buildResultCards(chain, price, friendMap)
 
