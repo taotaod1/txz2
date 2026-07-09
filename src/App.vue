@@ -1,432 +1,529 @@
 <template>
-  <div class="app-container" :class="{ 'dark-mode': isDark }">
+  <div class="app-container" :class="{ 'theme-dark': resolvedTheme === 'dark' }">
     <div class="app-content">
 
-      <header class="app-header ios-card">
+      <!-- ===== HEADER ===== -->
+      <header class="app-header">
         <div class="app-title">
-          <span class="app-title-icon">🔥</span>
+          <svg class="app-title-icon" width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C9.5 2 7.5 4.5 8 7C5 6 3 10 5 13C3 16 5 20 9 20.5C10.5 21.5 13 21 14.5 19.5C14 21 14.5 22.5 16.5 22.5C18 22.5 18.5 21 18.5 20C21 19 22 16 20 13C22 10 19 6 16 7C16.5 4.5 14.5 2 12 2Z"
+              fill="url(#title-fire-grad)"/>
+            <defs>
+              <linearGradient id="title-fire-grad" x1="12" y1="2" x2="12" y2="22.5" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#FF6B35"/><stop offset="1" stop-color="#FF3B30"/>
+              </linearGradient>
+            </defs>
+          </svg>
           <span class="app-title-text">洛克王国通行证拼团结算</span>
         </div>
         <div class="app-header-actions">
-          <input
-            ref="fileInputRef"
-            type="file"
-            accept="application/json,.json"
-            style="display: none"
-            @change="handleImportConfig"
-          />
-          <button class="ios-btn ios-btn-secondary ios-btn-sm" @click="triggerImportConfig">
-            <span class="btn-icon">📥</span><span class="btn-text">导入</span>
+          <!-- 主题切换 -->
+          <button
+            class="theme-toggle"
+            :title="themeToggleLabel"
+            @click="cycleTheme"
+            aria-label="切换主题"
+          >
+            <svg v-if="resolvedTheme === 'light'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
+          <!-- 导入/导出 -->
+          <button class="btn btn-secondary btn-sm" @click="triggerImportConfig">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span class="btn-text">导入</span>
           </button>
           <button
-            class="ios-btn ios-btn-secondary ios-btn-sm"
+            class="btn btn-secondary btn-sm"
             :disabled="people.length === 0"
             @click="exportConfig"
           >
-            <span class="btn-icon">📤</span><span class="btn-text">导出</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span class="btn-text">导出</span>
           </button>
         </div>
       </header>
 
+      <!-- ===== MAIN CONTENT ===== -->
       <div class="content-wrapper" :class="{ 'has-result': planResult && planResult.success }">
 
+        <!-- ===== LEFT COLUMN: CONFIG ===== -->
         <div class="config-column">
 
-        <section class="ios-card config-section">
-          <div class="section-header">
+          <!-- 档次选择 -->
+          <section class="card config-section">
             <h2 class="section-title">档次选择</h2>
-          </div>
-          <div class="segment-control">
-            <button
-              class="segment-btn"
-              :class="{ active: tier === 'normal' }"
-              @click="tier = 'normal'"
-            >
-              <span class="segment-text">普通版</span>
-              <span class="segment-price">{{ PRICE.normal.pass }}/{{ PRICE.normal.coupon }}元</span>
-            </button>
-            <button
-              class="segment-btn"
-              :class="{ active: tier === 'premium' }"
-              @click="tier = 'premium'"
-            >
-              <span class="segment-text">豪华版</span>
-              <span class="segment-price">{{ PRICE.premium.pass }}/{{ PRICE.premium.coupon }}元</span>
-            </button>
-          </div>
-          <div class="elf-name-row">
-            <div class="elf-name-field">
-              <label class="ios-label">离心舞者</label>
-              <input v-model="elfName1" placeholder="离心舞者" class="ios-input" />
-            </div>
-            <div class="elf-name-field">
-              <label class="ios-label">胡桃王子</label>
-              <input v-model="elfName2" placeholder="胡桃王子" class="ios-input" />
-            </div>
-          </div>
-        </section>
-
-        <section class="ios-card people-section">
-          <div class="section-header">
-            <h2 class="section-title">👥 人物列表</h2>
-            <div class="section-actions">              <button class="ios-btn ios-btn-primary" @click="addPerson">
-                <span class="btn-icon">＋</span> 添加
-              </button>
-            </div>
-          </div>
-
-          <div v-if="people.length === 0" class="empty-state">
-            <div class="empty-icon">👤</div>
-            <p class="empty-text">还没有添加人物</p>
-            <p class="empty-sub">点击「添加」开始</p>
-          </div>
-
-          <input
-            ref="avatarInputRef"
-            type="file"
-            accept="image/*"
-            style="display: none"
-            @change="handleAvatarFileSelected"
-          />
-          <TransitionGroup name="ios-list" tag="div" class="person-list">
-            <div
-              v-for="(person, index) in people"
-              :key="person.id"
-              class="person-row"
-            >
-              <div
-                class="person-avatar-slot"
-                :class="{ 'has-image': person.avatar }"
-                :style="person.avatar ? { backgroundImage: `url(${person.avatar})` } : null"
-                tabindex="0"
-                :title="person.avatar ? '点击更换 / 粘贴图片 / Delete 清除' : '点击上传 / 粘贴图片设置头像'"
-                @click="triggerAvatarPicker(person)"
-                @paste="handleAvatarPaste($event, person)"
-                @keydown.delete.prevent="clearAvatar(person)"
-                @keydown.backspace.prevent="clearAvatar(person)"
+            <div class="segment-control">
+              <button
+                class="segment-btn"
+                :class="{ active: tier === 'normal' }"
+                @click="tier = 'normal'"
               >
-                <span v-if="!person.avatar" class="avatar-empty">
-                  <span class="avatar-empty-icon">＋</span>
-                </span>
-                <button
-                  v-if="person.avatar"
-                  class="avatar-clear"
-                  title="清除头像"
-                  @click.stop="clearAvatar(person)"
-                >✕</button>
-              </div>
-              <div class="person-fields">
-                <div class="person-field name-field">
-                  <label class="field-label">姓名</label>
-                  <input v-model="person.name" placeholder="输入姓名" class="ios-input" />
-                </div>
-                <div class="person-field user-id-field">
-                  <label class="field-label">ID（选填）</label>
-                  <input v-model="person.userId" placeholder="游戏 ID / 备注" class="ios-input" />
-                </div>
-                <div class="person-field elf-field">
-                  <label class="field-label">需求精灵</label>
-                  <div class="elf-radio-group">
-                    <button
-                      class="elf-radio-btn"
-                      :class="{ active: person.needElf === 'elf1' }"
-                      @click="person.needElf = 'elf1'"
-                    >{{ elfName1 || '离心舞者' }}</button>
-                    <button
-                      class="elf-radio-btn"
-                      :class="{ active: person.needElf === 'elf2' }"
-                      @click="person.needElf = 'elf2'"
-                    >{{ elfName2 || '胡桃王子' }}</button>
-                    <button
-                      class="elf-radio-btn"
-                      :class="{ active: person.needElf === 'any' }"
-                      @click="person.needElf = 'any'"
-                    >都行</button>
-                  </div>
-                </div>
-                <div class="person-field head-field">
-                  <label class="field-label">车头</label>
-                  <button
-                    class="ios-toggle"
-                    :class="{ active: person.isHead }"
-                    @click="onHeadToggle(person)"
-                  >
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                <div class="person-field tail-field">
-                  <label class="field-label">车尾</label>
-                  <button
-                    class="ios-toggle"
-                    :class="{ active: person.isTail }"
-                    @click="onTailToggle(person)"
-                  >
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-              </div>
-              <button class="person-delete" @click="removePerson(index)">✕</button>
-            </div>
-          </TransitionGroup>
-        </section>
-
-        <section v-if="people.length >= 2" class="ios-card friend-section">
-          <div class="section-header">
-            <h2 class="section-title">🤝 好友关系</h2>
-            <div class="section-actions">
-              <span class="friend-count">共 {{ friendCount }} 对好友</span>
-              <button class="ios-btn ios-btn-secondary ios-btn-sm" @click="clearAllFriends">
-                清空
+                <span class="segment-text">普通版</span>
+                <span class="segment-price">{{ PRICE.normal.pass }}/{{ PRICE.normal.coupon }}元</span>
+              </button>
+              <button
+                class="segment-btn"
+                :class="{ active: tier === 'premium' }"
+                @click="tier = 'premium'"
+              >
+                <span class="segment-text">豪华版</span>
+                <span class="segment-price">{{ PRICE.premium.pass }}/{{ PRICE.premium.coupon }}元</span>
               </button>
             </div>
-          </div>
-          <p class="section-hint">勾选单元格表示行与列对应的人互为好友，对角线不可选</p>
-          <div class="matrix-wrapper">
-            <table class="friend-matrix">
-              <thead>
-                <tr>
-                  <th class="matrix-corner"></th>
-                  <th v-for="p in people" :key="'h-' + p.id" class="matrix-header">
-                    <span class="matrix-name">{{ p.name || '—' }}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, ri) in people" :key="'r-' + row.id">
-                  <td class="matrix-row-header">
-                    <span class="matrix-name">{{ row.name || '—' }}</span>
-                  </td>
-                  <td
-                    v-for="(col, ci) in people"
-                    :key="'c-' + col.id"
-                    class="matrix-cell"
-                    :class="{
-                      'cell-diagonal': ri === ci,
-                      'cell-checked': ri !== ci && isFriendPair(row.id, col.id),
-                      'cell-hover': hoveredCell && ((hoveredCell.ri === ri && hoveredCell.ci === ci) || (hoveredCell.ri === ci && hoveredCell.ci === ri)),
-                    }"
-                    @click="ri !== ci && toggleFriendCell(row.id, col.id)"
-                    @mouseenter="hoveredCell = { ri, ci }"
-                    @mouseleave="hoveredCell = null"
-                  >
-                    <span v-if="ri === ci" class="cell-diagonal-mark">—</span>
-                    <span v-else-if="isFriendPair(row.id, col.id)" class="cell-check">✓</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <div class="action-bar">
-          <button
-            class="ios-btn ios-btn-large ios-btn-primary"
-            :disabled="people.length < 2"
-            @click="doGenerate"
-          >
-            生成传火方案
-          </button>
-          <button class="ios-btn ios-btn-large ios-btn-ghost" @click="resetAll">
-            重置
-          </button>
-        </div>
-
-        <Transition name="ios-alert">
-          <div v-if="errorMsg" class="ios-alert ios-alert-error">
-            <div class="alert-content">
-              <span class="alert-icon">⚠️</span>
-              <span class="alert-text">{{ errorMsg }}</span>
+            <div class="elf-name-row">
+              <div class="elf-name-field">
+                <label class="field-label">离心舞者</label>
+                <input v-model="elfName1" placeholder="离心舞者" class="input" />
+              </div>
+              <div class="elf-name-field">
+                <label class="field-label">胡桃王子</label>
+                <input v-model="elfName2" placeholder="胡桃王子" class="input" />
+              </div>
             </div>
-            <button class="alert-close" @click="errorMsg = ''">✕</button>
-          </div>
-        </Transition>
+          </section>
 
-        <Transition name="ios-alert">
-          <div v-if="importToast" class="ios-alert ios-alert-success">
-            <div class="alert-content">
-              <span class="alert-icon">✅</span>
-              <span class="alert-text">{{ importToast }}</span>
-            </div>
-            <button class="alert-close" @click="importToast = ''">✕</button>
-          </div>
-        </Transition>
-
-        </div>
-
-        <div class="result-column">
-
-        <TransitionGroup name="ios-card-anim" tag="div" class="result-section">
-          <template v-if="planResult && planResult.success">
-
-            <div key="export-bar" class="export-bar">
-              <button class="ios-btn ios-btn-primary export-btn" :disabled="exporting" @click="exportAllCards">
-                <span v-if="exporting" class="export-spinner"></span>
-                {{ exporting ? '正在生成...' : '导出图片' }}
+          <!-- 人物列表 -->
+          <section class="card people-section">
+            <div class="section-header">
+              <h2 class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="section-title-icon">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                人物列表
+              </h2>
+              <button class="btn btn-primary btn-sm" @click="addPerson">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                添加
               </button>
             </div>
 
-            <div ref="exportContainer" key="export-container" class="export-container">
-              <div class="export-header">
-                <div class="export-title">🔥 洛克王国通行证拼团方案</div>
-                <div class="export-tier-badge">{{ tier === 'normal' ? '普通版' : '豪华版' }}</div>
-              </div>
+            <!-- 空状态 -->
+            <div v-if="people.length === 0" class="empty-state">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+              <p class="empty-text">还没有添加人物</p>
+              <p class="empty-sub">添加拼团成员后，下方将生成传火方案</p>
+              <button class="btn btn-primary" @click="addPerson">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                添加第一个人
+              </button>
+            </div>
 
-            <section key="summary" class="ios-card summary-section">
-              <div class="section-header">
-                <h2 class="section-title">📊 费用总览</h2>
-              </div>
-              <div class="stat-grid">
-                <div class="stat-item">
-                  <div class="stat-value">{{ planResult.chain.length }}<span class="stat-unit">人</span></div>
-                  <div class="stat-label">参与人数</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-value">{{ planResult.totalGamePayment }}<span class="stat-unit">元</span></div>
-                  <div class="stat-label">游戏总支付</div>
-                </div>
-                <div class="stat-item stat-highlight">
-                  <div class="stat-value">{{ planResult.resultCards[0].perPerson }}<span class="stat-unit">元</span></div>
-                  <div class="stat-label">每人均摊</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-value stat-green">{{ planResult.savings }}<span class="stat-unit">元</span></div>
-                  <div class="stat-label">节省总额</div>
-                </div>
-              </div>
-            </section>
+            <!-- 隐藏的文件输入 -->
+            <input
+              ref="avatarInputRef"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="handleAvatarFileSelected"
+            />
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="application/json,.json"
+              style="display: none"
+              @change="handleImportConfig"
+            />
 
-            <section key="chain" class="ios-card chain-section">
-              <div class="section-header">
-                <h2 class="section-title">🔗 传火链条</h2>
-              </div>
-              <div class="chain-flow">
-                <template v-for="(item, idx) in planResult.chainWithElf" :key="item.person.id">
-                  <div class="chain-node">
-                    <div
-                      class="chain-avatar"
-                      :class="[idx === 0 ? 'head' : idx === planResult.chainWithElf.length - 1 ? 'tail' : 'mid', { 'has-image': item.person.avatar }]"
-                      :style="item.person.avatar ? { backgroundImage: `url(${item.person.avatar})` } : null"
-                    >
-                      <span v-if="!item.person.avatar">{{ (item.person.name || '?').charAt(0) }}</span>
-                    </div>
-                    <div class="chain-name">{{ item.person.name }}</div>
-                    <div v-if="item.person.userId" class="chain-user-id">#{{ item.person.userId }}</div>
-                    <div class="chain-elf">{{ getElfName(item.assignedElf) }}</div>
-                  </div>
-                  <div v-if="idx < planResult.chainWithElf.length - 1" class="chain-arrow">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- 人物列表 -->
+            <TransitionGroup name="list" tag="div" class="person-list">
+              <div
+                v-for="(person, index) in people"
+                :key="person.id"
+                class="person-row"
+              >
+                <!-- 头像 -->
+                <div
+                  class="person-avatar"
+                  :class="{ 'has-image': person.avatar }"
+                  :style="person.avatar ? { backgroundImage: `url(${person.avatar})` } : null"
+                  tabindex="0"
+                  :title="person.avatar ? '点击更换 / 粘贴图片 / Delete 清除' : '点击上传 / 粘贴图片设置头像'"
+                  @click="triggerAvatarPicker(person)"
+                  @paste="handleAvatarPaste($event, person)"
+                  @keydown.delete.prevent="clearAvatar(person)"
+                  @keydown.backspace.prevent="clearAvatar(person)"
+                >
+                  <svg v-if="!person.avatar" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  <button
+                    v-if="person.avatar"
+                    class="avatar-clear"
+                    title="清除头像"
+                    @click.stop="clearAvatar(person)"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
-                  </div>
-                </template>
-              </div>
-            </section>
+                  </button>
+                </div>
 
-            <div
-              v-if="planResult.friendWarnings && planResult.friendWarnings.length > 0"
-              key="friend-warn"
-              class="ios-alert ios-alert-warning"
+                <!-- 字段 -->
+                <div class="person-fields">
+                  <div class="person-field name-field">
+                    <label class="field-label">姓名</label>
+                    <input v-model="person.name" placeholder="输入姓名" class="input" />
+                  </div>
+                  <div class="person-field id-field">
+                    <label class="field-label">ID（选填）</label>
+                    <input v-model="person.userId" placeholder="游戏 ID / 备注" class="input" />
+                  </div>
+                  <div class="person-field elf-field">
+                    <label class="field-label">需求精灵</label>
+                    <div class="elf-radio-group">
+                      <button
+                        class="elf-radio-btn"
+                        :class="{ active: person.needElf === 'elf1' }"
+                        @click="person.needElf = 'elf1'"
+                      >{{ elfName1 || '离心舞者' }}</button>
+                      <button
+                        class="elf-radio-btn"
+                        :class="{ active: person.needElf === 'elf2' }"
+                        @click="person.needElf = 'elf2'"
+                      >{{ elfName2 || '胡桃王子' }}</button>
+                      <button
+                        class="elf-radio-btn"
+                        :class="{ active: person.needElf === 'any' }"
+                        @click="person.needElf = 'any'"
+                      >都行</button>
+                    </div>
+                  </div>
+                  <div class="person-field toggle-field">
+                    <label class="field-label">车头</label>
+                    <button
+                      class="toggle"
+                      :class="{ active: person.isHead }"
+                      @click="onHeadToggle(person)"
+                      :aria-label="person.isHead ? '取消车头' : '设为车头'"
+                    >
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  <div class="person-field toggle-field">
+                    <label class="field-label">车尾</label>
+                    <button
+                      class="toggle"
+                      :class="{ active: person.isTail }"
+                      @click="onTailToggle(person)"
+                      :aria-label="person.isTail ? '取消车尾' : '设为车尾'"
+                    >
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 删除按钮 -->
+                <button class="person-delete" @click="removePerson(index)" aria-label="删除">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </TransitionGroup>
+          </section>
+
+          <!-- 好友关系矩阵 -->
+          <section v-if="people.length >= 2" class="card friend-section">
+            <div class="section-header">
+              <h2 class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="section-title-icon">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                好友关系
+              </h2>
+              <div class="section-actions">
+                <span class="friend-count">共 {{ friendCount }} 对好友</span>
+                <button class="btn btn-secondary btn-sm" @click="clearAllFriends">清空</button>
+              </div>
+            </div>
+            <p class="section-hint">勾选单元格表示两人互为好友（对角线不可选）</p>
+            <div class="matrix-wrapper">
+              <table class="friend-matrix">
+                <thead>
+                  <tr>
+                    <th class="matrix-corner"></th>
+                    <th v-for="p in people" :key="'h-' + p.id" class="matrix-header">
+                      <span class="matrix-name">{{ p.name || '—' }}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, ri) in people" :key="'r-' + row.id">
+                    <td class="matrix-row-header">
+                      <span class="matrix-name">{{ row.name || '—' }}</span>
+                    </td>
+                    <td
+                      v-for="(col, ci) in people"
+                      :key="'c-' + col.id"
+                      class="matrix-cell"
+                      :class="{
+                        'cell-diagonal': ri === ci,
+                        'cell-checked': ri !== ci && isFriendPair(row.id, col.id),
+                        'cell-hover': hoveredCell && ((hoveredCell.ri === ri && hoveredCell.ci === ci) || (hoveredCell.ri === ci && hoveredCell.ci === ri)),
+                      }"
+                      @click="ri !== ci && toggleFriendCell(row.id, col.id)"
+                      @mouseenter="hoveredCell = { ri, ci }"
+                      @mouseleave="hoveredCell = null"
+                    >
+                      <span v-if="ri === ci" class="cell-diagonal-mark">—</span>
+                      <svg v-else-if="isFriendPair(row.id, col.id)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cell-check">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- 操作栏 -->
+          <div class="action-bar">
+            <button
+              class="btn btn-large btn-primary"
+              :disabled="people.length < 2 || computing"
+              @click="doGenerate"
             >
-              <div class="alert-content">
-                <span class="alert-icon">🤝</span>
-                <div class="alert-detail">
-                  <span class="alert-text">以下人员需先加好友才能赠送副券</span>
-                  <div class="alert-tags">
-                    <span v-for="(w, idx) in planResult.friendWarnings" :key="idx" class="alert-tag">
-                      {{ w.from }} ↔ {{ w.to }}
+              <template v-if="computing">
+                <span class="spinner"></span>
+                计算中...
+              </template>
+              <template v-else>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                生成传火方案
+              </template>
+            </button>
+            <button class="btn btn-large btn-ghost" @click="resetAll">重置</button>
+          </div>
+
+          <!-- 错误提示 -->
+          <Transition name="alert">
+            <div v-if="errorMsg" class="alert alert-error">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span class="alert-text">{{ errorMsg }}</span>
+              <button class="alert-close" @click="errorMsg = ''">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </Transition>
+
+          <!-- 成功提示 -->
+          <Transition name="alert">
+            <div v-if="importToast" class="alert alert-success">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span class="alert-text">{{ importToast }}</span>
+              <button class="alert-close" @click="importToast = ''">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </Transition>
+        </div>
+
+        <!-- ===== RIGHT COLUMN: RESULT ===== -->
+        <div class="result-column">
+          <TransitionGroup name="fade" tag="div" class="result-section">
+            <template v-if="planResult && planResult.success">
+
+              <!-- 导出按钮 -->
+              <div key="export-bar" class="export-bar">
+                <button class="btn btn-primary export-btn" :disabled="exporting" @click="exportAllCards">
+                  <span v-if="exporting" class="spinner"></span>
+                  {{ exporting ? '正在生成...' : '导出图片' }}
+                </button>
+              </div>
+
+              <!-- 导出容器 -->
+              <div ref="exportContainer" key="export-container" class="export-container">
+                <div class="export-header">
+                  <div class="export-title">洛克王国通行证拼团方案</div>
+                  <div class="export-tier-badge">{{ tier === 'normal' ? '普通版' : '豪华版' }}</div>
+                </div>
+
+                <!-- 费用总览 -->
+                <section key="summary" class="card summary-section">
+                  <h2 class="section-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="section-title-icon">
+                      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    费用总览
+                  </h2>
+                  <div class="stat-grid">
+                    <div class="stat-item">
+                      <div class="stat-value">{{ planResult.chain.length }}<span class="stat-unit">人</span></div>
+                      <div class="stat-label">参与人数</div>
+                    </div>
+                    <div class="stat-item">
+                      <div class="stat-value">{{ planResult.totalGamePayment }}<span class="stat-unit">元</span></div>
+                      <div class="stat-label">游戏总支付</div>
+                    </div>
+                    <div class="stat-item stat-highlight">
+                      <div class="stat-value">{{ planResult.resultCards[0].perPerson }}<span class="stat-unit">元</span></div>
+                      <div class="stat-label">每人均摊</div>
+                    </div>
+                    <div class="stat-item stat-save">
+                      <div class="stat-value">{{ planResult.savings }}<span class="stat-unit">元</span></div>
+                      <div class="stat-label">节省总额</div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- 传火链条 -->
+                <section key="chain" class="card chain-section">
+                  <h2 class="section-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="section-title-icon">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    </svg>
+                    传火链条
+                  </h2>
+                  <div class="chain-flow">
+                    <template v-for="(item, idx) in planResult.chainWithElf" :key="item.person.id">
+                      <div class="chain-node">
+                        <div
+                          class="chain-avatar"
+                          :class="[idx === 0 ? 'head' : idx === planResult.chainWithElf.length - 1 ? 'tail' : 'mid', { 'has-image': item.person.avatar }]"
+                          :style="item.person.avatar ? { backgroundImage: `url(${item.person.avatar})` } : null"
+                        >
+                          <span v-if="!item.person.avatar">{{ (item.person.name || '?').charAt(0) }}</span>
+                        </div>
+                        <div class="chain-name">{{ item.person.name }}</div>
+                        <div v-if="item.person.userId" class="chain-user-id">#{{ item.person.userId }}</div>
+                        <div class="chain-elf">{{ getElfName(item.assignedElf) }}</div>
+                      </div>
+                      <div v-if="idx < planResult.chainWithElf.length - 1" class="chain-arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                      </div>
+                    </template>
+                  </div>
+                </section>
+
+                <!-- 好友提醒 -->
+                <div
+                  v-if="planResult.friendWarnings && planResult.friendWarnings.length > 0"
+                  key="friend-warn"
+                  class="alert alert-warning"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon flex-shrink">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                  </svg>
+                  <div class="alert-detail">
+                    <span class="alert-text">以下人员需先加好友才能赠送副券</span>
+                    <div class="alert-tags">
+                      <span v-for="(w, idx) in planResult.friendWarnings" :key="idx" class="alert-tag">
+                        {{ w.from }} &harr; {{ w.to }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 个人结算卡 -->
+                <section
+                  v-for="card in planResult.resultCards"
+                  :key="'card-' + card.person.id"
+                  class="card result-card"
+                  :class="{
+                    'card-head': card.role === '源头',
+                    'card-tail': card.role === '车尾',
+                  }"
+                >
+                  <div class="result-header">
+                    <div class="result-identity">
+                      <div
+                        class="result-avatar"
+                        :class="[card.role === '源头' ? 'head' : card.role === '车尾' ? 'tail' : 'mid', { 'has-image': card.person.avatar }]"
+                        :style="card.person.avatar ? { backgroundImage: `url(${card.person.avatar})` } : null"
+                      >
+                        <span v-if="!card.person.avatar">{{ (card.person.name || '?').charAt(0) }}</span>
+                      </div>
+                      <div>
+                        <div class="result-name">
+                          <span>{{ card.person.name }}</span>
+                          <span v-if="card.person.userId" class="result-user-id">#{{ card.person.userId }}</span>
+                        </div>
+                        <div class="result-elf-badge">需要「{{ card.myElfName }}」</div>
+                      </div>
+                    </div>
+                    <span class="role-badge" :class="card.role">{{ card.role }}</span>
+                  </div>
+
+                  <ul class="line-list">
+                    <li
+                      v-for="(item, idx) in card.items"
+                      :key="'i' + idx"
+                      class="line-item"
+                      :class="item.type"
+                    >
+                      <span class="line-amount" :class="item.type === 'expense' ? 'expense' : 'info'">
+                        {{ item.type === 'expense' ? `-${item.amount}` : '副券' }}
+                      </span>
+                      <span class="line-label">{{ item.label }}</span>
+                    </li>
+                    <li
+                      v-for="(t, idx) in card.transfers"
+                      :key="'t' + idx"
+                      class="line-item"
+                      :class="t.direction"
+                    >
+                      <span class="line-amount" :class="t.direction">
+                        {{ t.direction === 'out' ? '-' : '+' }}{{ t.amount }}
+                      </span>
+                      <span class="line-label">
+                        {{ t.direction === 'out' ? `转给 ${t.to}` : `${t.from} 转给你` }}
+                        <span v-if="t.reason" class="line-note">· {{ t.reason }}</span>
+                      </span>
+                    </li>
+                  </ul>
+
+                  <div class="net-summary">
+                    <span class="net-summary-label">净支出</span>
+                    <span class="net-summary-value">{{ card.netExpense }} 元</span>
+                  </div>
+
+                  <div v-if="card.friendHints.length > 0" class="friend-chips">
+                    <span
+                      v-for="(h, idx) in card.friendHints"
+                      :key="idx"
+                      class="friend-chip"
+                      :class="h.isFriend ? 'ok' : 'need'"
+                    >
+                      <span class="friend-chip-icon">{{ h.isFriend ? '✓' : '!' }}</span>
+                      {{ h.type === 'prev' ? '上家' : '下家' }} {{ h.name }}
+                      <span v-if="!h.isFriend" class="friend-chip-tag">需加好友</span>
                     </span>
                   </div>
-                </div>
+                </section>
               </div>
-            </div>
-
-            <section
-              v-for="card in planResult.resultCards"
-              :key="'card-' + card.person.id"
-              class="ios-card result-card"
-              :class="{
-                'card-head': card.role === '源头',
-                'card-tail': card.role === '车尾',
-              }"
-            >
-              <div class="result-header">
-                <div class="result-identity">
-                  <div
-                    class="result-avatar"
-                    :class="[card.role === '源头' ? 'head' : card.role === '车尾' ? 'tail' : 'mid', { 'has-image': card.person.avatar }]"
-                    :style="card.person.avatar ? { backgroundImage: `url(${card.person.avatar})` } : null"
-                  >
-                    <span v-if="!card.person.avatar">{{ (card.person.name || '?').charAt(0) }}</span>
-                  </div>
-                  <div>
-                    <div class="result-name">
-                      <span>{{ card.person.name }}</span>
-                      <span v-if="card.person.userId" class="result-user-id">#{{ card.person.userId }}</span>
-                    </div>
-                    <div class="result-elf-badge">需要「{{ card.myElfName }}」</div>
-                  </div>
-                </div>
-                <span class="role-badge" :class="card.role">{{ card.role }}</span>
-              </div>
-
-              <ul class="line-list">
-                <li
-                  v-for="(item, idx) in card.items"
-                  :key="'i' + idx"
-                  class="line-item"
-                  :class="item.type"
-                >
-                  <span class="line-amount" :class="item.type === 'expense' ? 'expense' : 'info'">
-                    {{ item.type === 'expense' ? `-${item.amount}` : '副券' }}
-                  </span>
-                  <span class="line-label">{{ item.label }}</span>
-                </li>
-                <li
-                  v-for="(t, idx) in card.transfers"
-                  :key="'t' + idx"
-                  class="line-item"
-                  :class="t.direction"
-                >
-                  <span class="line-amount" :class="t.direction">
-                    {{ t.direction === 'out' ? '-' : '+' }}{{ t.amount }}
-                  </span>
-                  <span class="line-label">
-                    {{ t.direction === 'out' ? `转给 ${t.to}` : `${t.from} 转给你` }}
-                    <span v-if="t.reason" class="line-note">· {{ t.reason }}</span>
-                  </span>
-                </li>
-              </ul>
-
-              <div class="net-summary">
-                <span class="net-summary-label">净支出</span>
-                <span class="net-summary-value">{{ card.netExpense }} 元</span>
-              </div>
-
-              <div v-if="card.friendHints.length > 0" class="friend-chips">
-                <span
-                  v-for="(h, idx) in card.friendHints"
-                  :key="idx"
-                  class="friend-chip"
-                  :class="h.isFriend ? 'ok' : 'need'"
-                >
-                  <span class="friend-chip-icon">{{ h.isFriend ? '✓' : '!' }}</span>
-                  {{ h.type === 'prev' ? '上家' : '下家' }} {{ h.name }}
-                  <span v-if="!h.isFriend" class="friend-chip-tag">需加好友</span>
-                </span>
-              </div>
-            </section>
-
-            </div>
-
-          </template>
-        </TransitionGroup>
-
+            </template>
+          </TransitionGroup>
         </div>
-
       </div>
+
     </div>
-
-      </div>
+  </div>
 </template>
 
 <script setup>
@@ -434,11 +531,14 @@ import { ref, reactive, computed, nextTick } from 'vue'
 import { generatePlan, PRICE } from './utils/calculator.js'
 import html2canvas from 'html2canvas'
 
-
+// ===== 状态 =====
 const tier = ref('normal')
 const elfName1 = ref('离心舞者')
 const elfName2 = ref('胡桃王子')
-const isDark = ref(false)
+
+// 主题: 'system' | 'light' | 'dark'
+const themeMode = ref('system')
+const resolvedTheme = ref('light')
 
 let nextId = 1
 const people = reactive([])
@@ -447,18 +547,41 @@ const planResult = ref(null)
 const errorMsg = ref('')
 const importToast = ref('')
 const exporting = ref(false)
+const computing = ref(false)
 const exportContainer = ref(null)
 const fileInputRef = ref(null)
 const avatarInputRef = ref(null)
 let avatarTargetId = null
 
-if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-  isDark.value = true
+// ===== 主题系统 =====
+function applyTheme(mode) {
+  if (mode === 'light') {
+    resolvedTheme.value = 'light'
+  } else if (mode === 'dark') {
+    resolvedTheme.value = 'dark'
+  } else {
+    resolvedTheme.value = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
 }
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-  isDark.value = e.matches
+
+applyTheme(themeMode.value)
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (themeMode.value === 'system') applyTheme('system')
 })
 
+function cycleTheme() {
+  const modes = ['system', 'light', 'dark']
+  const idx = modes.indexOf(themeMode.value)
+  themeMode.value = modes[(idx + 1) % modes.length]
+  applyTheme(themeMode.value)
+}
+
+const themeToggleLabel = computed(() => {
+  return themeMode.value === 'system' ? '跟随系统 (点击切换)' : themeMode.value === 'light' ? '浅色模式 (点击切换)' : '深色模式 (点击切换)'
+})
+
+// ===== 计算属性 =====
 const friendCount = computed(() => {
   let count = 0
   for (let i = 0; i < people.length; i++) {
@@ -471,6 +594,7 @@ const friendCount = computed(() => {
 
 const hoveredCell = ref(null)
 
+// ===== 好友关系 =====
 function getFriendKey(idA, idB) {
   return idA < idB ? `${idA}-${idB}` : `${idB}-${idA}`
 }
@@ -492,6 +616,7 @@ function clearAllFriends() {
   friendships.clear()
 }
 
+// ===== 人物管理 =====
 function addPerson() {
   people.push({ id: nextId++, name: '', userId: '', avatar: '', needElf: 'elf1', isHead: false, isTail: false })
 }
@@ -525,12 +650,14 @@ function onTailToggle(person) {
   }
 }
 
+// ===== 精灵名称 =====
 function getElfName(elf) {
   if (elf === 'elf1') return elfName1.value || '离心舞者'
   if (elf === 'elf2') return elfName2.value || '胡桃王子'
   return '都行'
 }
 
+// ===== 重置 =====
 function resetAll() {
   people.length = 0
   friendships.clear()
@@ -540,8 +667,10 @@ function resetAll() {
   elfName2.value = '胡桃王子'
   planResult.value = null
   errorMsg.value = ''
+  computing.value = false
 }
 
+// ===== 生成方案 =====
 function buildFriendMatrix() {
   const matrix = []
   for (const [key] of friendships) {
@@ -551,21 +680,31 @@ function buildFriendMatrix() {
   return matrix
 }
 
-function doGenerate() {
+async function doGenerate() {
   errorMsg.value = ''
   planResult.value = null
+
   if (people.length < 2) { errorMsg.value = '至少需要 2 个人才能生成传火方案'; return }
   if (people.some((p) => !p.name.trim())) { errorMsg.value = '请为所有人填写姓名'; return }
   if (people.some((p) => !p.needElf)) { errorMsg.value = '请为所有人选择需求精灵版本'; return }
+
+  computing.value = true
+  // 使用 nextTick 确保 UI 更新后再执行（对于大量数据可能需要稍长时间）
+  await nextTick()
+
   const result = generatePlan(
     [...people], tier.value,
     { elf1: elfName1.value || '离心舞者', elf2: elfName2.value || '胡桃王子' },
     buildFriendMatrix()
   )
+
+  computing.value = false
+
   if (!result.success) { errorMsg.value = result.error; return }
   planResult.value = result
 }
 
+// ===== 头像上传 =====
 function triggerAvatarPicker(person) {
   avatarTargetId = person.id
   if (avatarInputRef.value) {
@@ -653,7 +792,7 @@ async function fileToCompressedAvatar(file, maxSize = 128) {
   })
 }
 
-
+// ===== 导入/导出配置 =====
 function exportConfig() {
   if (people.length === 0) return
   const config = {
@@ -782,6 +921,7 @@ function showImportToast(msg) {
   }, 2800)
 }
 
+// ===== 导出图片 =====
 async function exportAllCards() {
   if (!exportContainer.value || exporting.value) return
   exporting.value = true
@@ -797,7 +937,7 @@ async function exportAllCards() {
         const cloned = doc.querySelector('.export-container')
         if (cloned) {
           cloned.style.padding = '24px 20px'
-          cloned.style.background = isDark.value
+          cloned.style.background = resolvedTheme.value === 'dark'
             ? 'linear-gradient(180deg, #1C1C1E 0%, #000000 100%)'
             : 'linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%)'
           cloned.style.borderRadius = '0'
@@ -820,6 +960,7 @@ async function exportAllCards() {
 </script>
 
 <style>
+/* ===== GLOBAL RESET & DESIGN TOKENS ===== */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -827,52 +968,95 @@ async function exportAllCards() {
 }
 
 :root {
-  --ios-bg: #F2F2F7;
-  --ios-bg-gradient: linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%);
-  --ios-card: rgba(255, 255, 255, 0.72);
-  --ios-card-solid: #FFFFFF;
-  --ios-card-border: rgba(60, 60, 67, 0.1);
-  --ios-text: #1C1C1E;
-  --ios-text-secondary: #8E8E93;
-  --ios-text-tertiary: #AEAEB2;
-  --ios-separator: rgba(60, 60, 67, 0.12);
-  --ios-blue: #007AFF;
-  --ios-green: #34C759;
-  --ios-orange: #FF9500;
-  --ios-red: #FF3B30;
-  --ios-purple: #AF52DE;
-  --ios-fill: rgba(120, 120, 128, 0.08);
-  --ios-fill-secondary: rgba(120, 120, 128, 0.12);
-  --ios-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.06);
-  --ios-shadow-elevated: 0 4px 24px rgba(0, 0, 0, 0.06), 0 0 1px rgba(0, 0, 0, 0.08);
-  --ios-radius: 16px;
-  --ios-radius-sm: 12px;
-  --ios-radius-xs: 8px;
-  --ios-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --ios-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --ios-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  --ios-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Brand Colors */
+  --accent: #FF6B35;
+  --accent-hover: #E55A2B;
+
+  /* Light Theme */
+  --bg: #F2F2F7;
+  --bg-gradient: linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%);
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #FFFFFF;
+  --surface-hover: rgba(255, 255, 255, 0.88);
+  --border: rgba(60, 60, 67, 0.10);
+  --border-strong: rgba(60, 60, 67, 0.16);
+  --text: #1C1C1E;
+  --text-secondary: #636366;
+  --text-tertiary: #AEAEB2;
+  --separator: rgba(60, 60, 67, 0.12);
+  --fill: rgba(120, 120, 128, 0.08);
+  --fill-secondary: rgba(120, 120, 128, 0.13);
+
+  /* Semantic Colors */
+  --blue: #007AFF;
+  --blue-bg: rgba(0, 122, 255, 0.08);
+  --blue-border: rgba(0, 122, 255, 0.16);
+  --green: #34C759;
+  --green-bg: rgba(52, 199, 89, 0.08);
+  --green-border: rgba(52, 199, 89, 0.16);
+  --orange: #FF9500;
+  --orange-bg: rgba(255, 149, 0, 0.08);
+  --orange-border: rgba(255, 149, 0, 0.16);
+  --red: #FF3B30;
+  --red-bg: rgba(255, 59, 48, 0.08);
+  --red-border: rgba(255, 59, 48, 0.16);
+  --purple: #AF52DE;
+
+  /* Surfaces */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 0 1px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.10);
+
+  /* Radii */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-lg: 20px;
+  --radius-full: 100px;
+
+  /* Typography */
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', monospace;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.dark-mode {
-  --ios-bg: #1C1C1E;
-  --ios-bg-gradient: linear-gradient(180deg, #1C1C1E 0%, #000000 100%);
-  --ios-card: rgba(44, 44, 46, 0.78);
-  --ios-card-solid: #2C2C2E;
-  --ios-card-border: rgba(255, 255, 255, 0.08);
-  --ios-text: #F5F5F7;
-  --ios-text-secondary: #98989D;
-  --ios-text-tertiary: #636366;
-  --ios-separator: rgba(84, 84, 88, 0.36);
-  --ios-blue: #0A84FF;
-  --ios-green: #30D158;
-  --ios-orange: #FF9F0A;
-  --ios-red: #FF453A;
-  --ios-purple: #BF5AF2;
-  --ios-fill: rgba(120, 120, 128, 0.2);
-  --ios-fill-secondary: rgba(120, 120, 128, 0.28);
-  --ios-shadow: 0 2px 16px rgba(0, 0, 0, 0.2), 0 0 1px rgba(0, 0, 0, 0.24);
-  --ios-shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.28);
+/* Dark Theme */
+.theme-dark {
+  --bg: #1C1C1E;
+  --bg-gradient: linear-gradient(180deg, #1C1C1E 0%, #0A0A0B 100%);
+  --surface: rgba(44, 44, 46, 0.78);
+  --surface-solid: #2C2C2E;
+  --surface-hover: rgba(58, 58, 60, 0.88);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text: #F5F5F7;
+  --text-secondary: #98989D;
+  --text-tertiary: #636366;
+  --separator: rgba(84, 84, 88, 0.36);
+  --fill: rgba(120, 120, 128, 0.20);
+  --fill-secondary: rgba(120, 120, 128, 0.28);
+
+  --blue: #0A84FF;
+  --blue-bg: rgba(10, 132, 255, 0.12);
+  --blue-border: rgba(10, 132, 255, 0.20);
+  --green: #30D158;
+  --green-bg: rgba(48, 209, 88, 0.12);
+  --green-border: rgba(48, 209, 88, 0.20);
+  --orange: #FF9F0A;
+  --orange-bg: rgba(255, 159, 10, 0.12);
+  --orange-border: rgba(255, 159, 10, 0.20);
+  --red: #FF453A;
+  --red-bg: rgba(255, 69, 58, 0.12);
+  --red-border: rgba(255, 69, 58, 0.20);
+  --purple: #BF5AF2;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.20), 0 0 1px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.24), 0 0 1px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.30), 0 0 1px rgba(0, 0, 0, 0.32);
 }
 
 html {
@@ -881,12 +1065,13 @@ html {
 }
 
 body {
-  background: #000;
+  background: var(--bg);
   min-height: 100vh;
-  font-family: var(--ios-font);
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  color: var(--text);
 }
 
 #app {
@@ -895,46 +1080,54 @@ body {
 </style>
 
 <style scoped>
+/* ===== APP CONTAINER ===== */
 .app-container {
   min-height: 100vh;
-  background: var(--ios-bg-gradient);
+  background: var(--bg-gradient);
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  transition: background 0.5s var(--ease-out);
 }
 
+/* Background image layer */
 .app-container::before {
   content: '';
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: url('/bg.png') no-repeat center center;
   background-size: cover;
   z-index: 0;
-  opacity: 0.35;
-  transition: opacity 0.6s var(--ios-ease);
+  opacity: 0.15;
+  transition: opacity 0.6s var(--ease-out);
 }
 
-.dark-mode::before {
-  opacity: 0.2;
+.theme-dark::before {
+  opacity: 0.08;
 }
 
+/* Content wrapper */
 .app-content {
   position: relative;
   z-index: 1;
-  max-width: 680px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 20px 16px 48px;
+  padding: 24px 20px 64px;
 }
 
+/* ===== HEADER ===== */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 18px;
-  margin-bottom: 16px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .app-title {
@@ -945,14 +1138,13 @@ body {
 }
 
 .app-title-icon {
-  font-size: 22px;
   flex-shrink: 0;
 }
 
 .app-title-text {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  color: var(--ios-text);
+  color: var(--text);
   letter-spacing: -0.3px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -961,46 +1153,107 @@ body {
 
 .app-header-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.app-header-actions .ios-btn-sm {
-  padding: 7px 14px;
+/* Theme toggle */
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--fill);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
 }
 
-.app-header-actions .ios-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.theme-toggle:hover {
+  background: var(--fill-secondary);
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
+.theme-toggle:active {
+  transform: scale(0.94);
+}
+
+/* ===== TWO-COLUMN LAYOUT ===== */
 .content-wrapper {
   display: flex;
   flex-direction: column;
+  gap: 20px;
 }
 
-.config-column,
-.result-column {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+/* Desktop: side-by-side */
+@media (min-width: 960px) {
+  .content-wrapper {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .config-column {
+    flex: 1 1 420px;
+    max-width: 520px;
+    position: sticky;
+    top: 24px;
+  }
+
+  .result-column {
+    flex: 1 1 500px;
+    min-width: 0;
+  }
+
+  .content-wrapper.has-result .config-column {
+    max-width: 440px;
+  }
 }
 
-.ios-card {
-  background: var(--ios-card);
+@media (min-width: 1200px) {
+  .content-wrapper {
+    gap: 32px;
+  }
+  .config-column { max-width: 560px; }
+  .content-wrapper.has-result .config-column { max-width: 480px; }
+}
+
+/* ===== CARD ===== */
+.card {
+  background: var(--surface);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: var(--ios-radius);
-  border: 1px solid var(--ios-card-border);
-  box-shadow: var(--ios-shadow);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   padding: 20px;
   margin-bottom: 16px;
-  transition: all 0.4s var(--ios-ease);
-  will-change: transform, opacity;
+  transition: box-shadow 0.3s var(--ease-out);
 }
 
-.ios-card:hover {
-  box-shadow: var(--ios-shadow-elevated);
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== SECTION ===== */
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-title-icon {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 .section-header {
@@ -1010,28 +1263,134 @@ body {
   margin-bottom: 16px;
 }
 
-.section-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--ios-text);
-  letter-spacing: -0.4px;
+.section-header .section-title {
+  margin-bottom: 0;
 }
 
 .section-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
 .section-hint {
   font-size: 13px;
-  color: var(--ios-text-secondary);
+  color: var(--text-secondary);
   margin-bottom: 14px;
   line-height: 1.5;
 }
 
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 18px;
+  border-radius: var(--radius-full);
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.25s var(--spring);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn:active { transform: scale(0.95); }
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background: var(--blue);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.32);
+}
+
+.btn-secondary {
+  background: var(--fill-secondary);
+  color: var(--blue);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--fill);
+  color: var(--blue);
+}
+
+.btn-ghost {
+  background: var(--fill);
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--fill-secondary);
+  color: var(--text);
+}
+
+.btn-sm {
+  padding: 6px 13px;
+  font-size: 13px;
+  gap: 4px;
+}
+
+.btn-large {
+  padding: 14px 28px;
+  font-size: 17px;
+  border-radius: var(--radius);
+}
+
+.btn-text {
+  display: inline;
+}
+
+@media (max-width: 380px) {
+  .btn-sm .btn-text { display: none; }
+}
+
+/* ===== INPUTS ===== */
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--fill);
+  color: var(--text);
+  font-size: 15px;
+  font-family: var(--font);
+  outline: none;
+  transition: all 0.25s var(--ease-out);
+}
+
+.input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-bg);
+  background: var(--surface-solid);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ===== SEGMENT CONTROL ===== */
 .segment-control {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 18px;
 }
 
@@ -1040,32 +1399,25 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   padding: 14px 12px;
-  border-radius: var(--ios-radius-sm);
-  border: 1px solid var(--ios-card-border);
-  background: var(--ios-fill);
-  color: var(--ios-text-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--fill);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.35s var(--ios-spring);
-  font-family: var(--ios-font);
-  will-change: transform;
+  transition: all 0.3s var(--spring);
+  font-family: var(--font);
 }
 
-.segment-btn:active {
-  transform: scale(0.97);
-}
+.segment-btn:active { transform: scale(0.97); }
 
 .segment-btn.active {
-  background: var(--ios-blue);
-  border-color: var(--ios-blue);
+  background: var(--blue);
+  border-color: var(--blue);
   color: #fff;
   box-shadow: 0 4px 16px rgba(0, 122, 255, 0.28);
   transform: scale(1.02);
-}
-
-.segment-icon {
-  font-size: 22px;
 }
 
 .segment-text {
@@ -1075,9 +1427,11 @@ body {
 
 .segment-price {
   font-size: 12px;
-  opacity: 0.7;
+  font-weight: 400;
+  opacity: 0.75;
 }
 
+/* ===== ELF NAME ROW ===== */
 .elf-name-row {
   display: flex;
   gap: 12px;
@@ -1085,115 +1439,38 @@ body {
 
 .elf-name-field {
   flex: 1;
+  min-width: 0;
 }
 
-.ios-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ios-text-secondary);
-  margin-bottom: 6px;
-}
-
-.ios-input {
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: var(--ios-radius-xs);
-  border: 1px solid var(--ios-card-border);
-  background: var(--ios-fill);
-  color: var(--ios-text);
-  font-size: 15px;
-  font-family: var(--ios-font);
-  outline: none;
-  transition: all 0.3s var(--ios-ease);
-}
-
-.ios-input:focus {
-  border-color: var(--ios-blue);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
-  background: var(--ios-card-solid);
-}
-
-.ios-input::placeholder {
-  color: var(--ios-text-tertiary);
-}
-
-.ios-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--ios-font);
-  cursor: pointer;
-  transition: all 0.3s var(--ios-spring);
-  will-change: transform;
-}
-
-.ios-btn:active {
-  transform: scale(0.95);
-}
-
-.ios-btn-primary {
-  background: var(--ios-blue);
-  color: #fff;
-}
-
-.ios-btn-primary:hover {
-  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.28);
-}
-
-.ios-btn-secondary {
-  background: var(--ios-fill-secondary);
-  color: var(--ios-blue);
-}
-
-.ios-btn-sm {
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.ios-btn-large {
-  padding: 14px 28px;
-  font-size: 17px;
-  border-radius: var(--ios-radius);
-}
-
-.ios-btn-ghost {
-  background: var(--ios-fill);
-  color: var(--ios-text-secondary);
-}
-
-.btn-icon {
-  font-size: 16px;
-  font-weight: 400;
-}
-
+/* ===== EMPTY STATE ===== */
 .empty-state {
   text-align: center;
-  padding: 32px 0;
+  padding: 40px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .empty-icon {
-  font-size: 48px;
+  color: var(--text-tertiary);
   margin-bottom: 8px;
+  opacity: 0.5;
 }
 
 .empty-text {
   font-size: 17px;
   font-weight: 600;
-  color: var(--ios-text);
-  margin-bottom: 4px;
+  color: var(--text);
 }
 
 .empty-sub {
   font-size: 14px;
-  color: var(--ios-text-secondary);
+  color: var(--text-secondary);
+  margin-bottom: 12px;
 }
 
+/* ===== PERSON LIST ===== */
 .person-list {
   display: flex;
   flex-direction: column;
@@ -1205,63 +1482,50 @@ body {
   align-items: flex-start;
   gap: 12px;
   padding: 14px;
-  background: var(--ios-fill);
-  border-radius: var(--ios-radius-sm);
-  border: 1px solid var(--ios-card-border);
-  transition: all 0.35s var(--ios-ease);
+  background: var(--fill);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  transition: background 0.25s var(--ease-out);
 }
 
 .person-row:hover {
-  background: var(--ios-fill-secondary);
+  background: var(--fill-secondary);
 }
 
-.person-avatar-slot {
-  position: relative;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
+/* ===== AVATAR ===== */
+.person-avatar {
   flex-shrink: 0;
-  background: var(--ios-card-solid);
-  border: 1.5px dashed var(--ios-card-border);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  border: 1.5px dashed var(--border);
   background-size: cover;
   background-position: center;
   cursor: pointer;
   outline: none;
-  transition: all 0.25s var(--ios-ease);
-  margin-top: 18px;
+  transition: all 0.2s var(--ease-out);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-tertiary);
   overflow: hidden;
+  align-self: center;
 }
 
-.person-avatar-slot:hover {
-  border-color: var(--ios-blue);
-  background-color: rgba(0, 122, 255, 0.04);
+.person-avatar:hover {
+  border-color: var(--blue);
 }
 
-.person-avatar-slot:focus-visible {
+.person-avatar:focus-visible {
   border-style: solid;
-  border-color: var(--ios-blue);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-bg);
 }
 
-.person-avatar-slot.has-image {
+.person-avatar.has-image {
   border-style: solid;
-  border-color: var(--ios-card-border);
-}
-
-.avatar-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ios-text-tertiary);
-}
-
-.avatar-empty-icon {
-  font-size: 24px;
-  font-weight: 300;
-  line-height: 1;
+  border-color: var(--border);
 }
 
 .avatar-clear {
@@ -1273,146 +1537,138 @@ body {
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s var(--ios-ease);
+  transition: opacity 0.2s var(--ease-out);
+  padding: 0;
 }
 
-.person-avatar-slot.has-image:hover .avatar-clear,
-.person-avatar-slot:focus-visible .avatar-clear {
+.person-avatar.has-image:hover .avatar-clear,
+.person-avatar:focus-visible .avatar-clear {
   opacity: 1;
 }
 
-.user-id-field {
-  width: 140px;
-  flex-shrink: 0;
-}
-
+/* ===== PERSON FIELDS ===== */
 .person-fields {
   flex: 1;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  align-items: flex-end;
+  min-width: 0;
 }
 
 .person-field {
   min-width: 0;
 }
 
-.name-field {
-  width: 120px;
-  flex-shrink: 0;
+.name-field { grid-column: 1; }
+.id-field { grid-column: 2; }
+.elf-field { grid-column: 1 / -1; }
+.toggle-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.elf-field {
-  flex: 1;
-  min-width: 200px;
+@media (max-width: 480px) {
+  .person-fields {
+    grid-template-columns: 1fr;
+  }
+  .name-field, .id-field, .elf-field {
+    grid-column: 1 / -1;
+  }
+  .toggle-field {
+    align-items: flex-start;
+  }
 }
 
-.head-field {
-  width: auto;
-  flex-shrink: 0;
-}
-
-.tail-field {
-  width: auto;
-  flex-shrink: 0;
-}
-
-.field-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ios-text-secondary);
-  margin-bottom: 6px;
-}
-
+/* ===== ELF RADIO GROUP ===== */
 .elf-radio-group {
   display: flex;
-  border-radius: var(--ios-radius-xs);
+  border-radius: var(--radius-xs);
   overflow: hidden;
-  border: 1px solid var(--ios-card-border);
+  border: 1px solid var(--border);
 }
 
 .elf-radio-btn {
-  padding: 7px 12px;
+  flex: 1;
+  padding: 7px 10px;
   font-size: 13px;
   font-weight: 500;
-  font-family: var(--ios-font);
+  font-family: var(--font);
   border: none;
-  background: var(--ios-fill);
-  color: var(--ios-text-secondary);
+  background: var(--fill);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.25s var(--ios-ease);
+  transition: all 0.2s var(--ease-out);
   white-space: nowrap;
 }
 
 .elf-radio-btn + .elf-radio-btn {
-  border-left: 1px solid var(--ios-card-border);
+  border-left: 1px solid var(--border);
 }
 
 .elf-radio-btn.active {
-  background: var(--ios-blue);
+  background: var(--blue);
   color: #fff;
 }
 
-.ios-toggle {
-  width: 51px;
-  height: 31px;
-  border-radius: 16px;
+/* ===== TOGGLE SWITCH ===== */
+.toggle {
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
   border: none;
-  background: var(--ios-fill-secondary);
+  background: var(--fill-secondary);
   position: relative;
   cursor: pointer;
-  transition: background 0.35s var(--ios-spring);
-  margin-top: 2px;
+  transition: background 0.3s var(--spring);
+  padding: 0;
 }
 
-.ios-toggle.active {
-  background: var(--ios-green);
+.toggle.active {
+  background: var(--green);
 }
 
 .toggle-knob {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.08);
-  transition: transform 0.35s var(--ios-spring);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  transition: transform 0.3s var(--spring);
 }
 
-.ios-toggle.active .toggle-knob {
+.toggle.active .toggle-knob {
   transform: translateX(20px);
 }
 
+/* ===== DELETE BUTTON ===== */
 .person-delete {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   border: none;
-  background: var(--ios-fill-secondary);
-  color: var(--ios-red);
-  font-size: 13px;
+  background: var(--fill-secondary);
+  color: var(--red);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 20px;
-  transition: all 0.25s var(--ios-spring);
+  transition: all 0.2s var(--spring);
+  padding: 0;
+  align-self: center;
 }
 
 .person-delete:hover {
-  background: var(--ios-red);
+  background: var(--red);
   color: #fff;
 }
 
@@ -1420,15 +1676,17 @@ body {
   transform: scale(0.88);
 }
 
+/* ===== FRIEND MATRIX ===== */
 .matrix-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 4px;
+  margin: 0 -4px;
 }
 
 .friend-matrix {
   border-collapse: separate;
-  border-spacing: 3px;
+  border-spacing: 4px;
   margin: 0 auto;
 }
 
@@ -1436,31 +1694,24 @@ body {
   width: 48px;
 }
 
-.matrix-header {
+.matrix-header,
+.matrix-row-header {
   padding: 6px 8px;
-  text-align: center;
   font-weight: 600;
   font-size: 13px;
-  color: var(--ios-text);
-  background: var(--ios-fill);
+  color: var(--text);
+  background: var(--fill);
   border-radius: 6px;
   min-width: 44px;
 }
 
 .matrix-row-header {
-  padding: 6px 10px;
   text-align: right;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--ios-text);
-  background: var(--ios-fill);
-  border-radius: 6px;
-  white-space: nowrap;
 }
 
 .matrix-name {
   display: inline-block;
-  max-width: 60px;
+  max-width: 56px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1474,29 +1725,30 @@ body {
   vertical-align: middle;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s var(--ios-ease);
-  background: var(--ios-fill);
-  border: 1px solid var(--ios-card-border);
+  transition: all 0.2s var(--ease-out);
+  background: var(--fill);
+  border: 1px solid var(--border);
   user-select: none;
+  color: var(--blue);
 }
 
 .matrix-cell:hover:not(.cell-diagonal) {
-  background: var(--ios-fill-secondary);
+  background: var(--fill-secondary);
 }
 
 .matrix-cell.cell-hover:not(.cell-diagonal) {
-  background: rgba(0, 122, 255, 0.08);
-  border-color: rgba(0, 122, 255, 0.2);
+  background: var(--blue-bg);
+  border-color: var(--blue-border);
 }
 
 .matrix-cell.cell-checked {
-  background: rgba(0, 122, 255, 0.12);
-  border-color: rgba(0, 122, 255, 0.3);
+  background: var(--blue-bg);
+  border-color: var(--blue-border);
 }
 
 .matrix-cell.cell-checked.cell-hover {
-  background: rgba(0, 122, 255, 0.18);
-  border-color: rgba(0, 122, 255, 0.4);
+  background: rgba(0, 122, 255, 0.15);
+  border-color: rgba(0, 122, 255, 0.28);
 }
 
 .cell-diagonal {
@@ -1506,23 +1758,22 @@ body {
 }
 
 .cell-diagonal-mark {
-  color: var(--ios-text-tertiary);
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
 .cell-check {
-  color: var(--ios-blue);
-  font-size: 16px;
-  font-weight: 700;
+  color: var(--blue);
 }
 
 .friend-count {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ios-text-secondary);
-  margin-right: 8px;
+  color: var(--text-secondary);
+  margin-right: 4px;
 }
 
+/* ===== ACTION BAR ===== */
 .action-bar {
   display: flex;
   gap: 12px;
@@ -1530,15 +1781,14 @@ body {
   margin: 24px 0;
 }
 
-.action-bar .ios-btn-large:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
+.action-bar .btn-large {
+  flex: 0 1 auto;
 }
 
-.ios-alert {
+/* ===== ALERT ===== */
+.alert {
   padding: 14px 16px;
-  border-radius: var(--ios-radius-sm);
+  border-radius: var(--radius-sm);
   margin-bottom: 16px;
   display: flex;
   align-items: flex-start;
@@ -1547,44 +1797,28 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
-.ios-alert-error {
-  background: rgba(255, 59, 48, 0.08);
-  border: 1px solid rgba(255, 59, 48, 0.15);
-}
-
-.ios-alert-warning {
-  background: rgba(255, 149, 0, 0.08);
-  border: 1px solid rgba(255, 149, 0, 0.15);
-}
-
-.ios-alert-success {
-  background: rgba(52, 199, 89, 0.1);
-  border: 1px solid rgba(52, 199, 89, 0.2);
-}
-
-.alert-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  flex: 1;
-}
+.alert-error    { background: var(--red-bg);    border: 1px solid var(--red-border);    color: var(--red); }
+.alert-warning  { background: var(--orange-bg); border: 1px solid var(--orange-border); color: var(--orange); }
+.alert-success  { background: var(--green-bg);  border: 1px solid var(--green-border);  color: var(--green); }
 
 .alert-icon {
-  font-size: 18px;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .alert-text {
   font-size: 14px;
   font-weight: 500;
-  color: var(--ios-text);
+  color: var(--text);
   line-height: 1.5;
+  flex: 1;
 }
 
 .alert-detail {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
 }
 
 .alert-tags {
@@ -1597,10 +1831,10 @@ body {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 6px;
-  background: rgba(255, 149, 0, 0.12);
+  background: var(--orange-bg);
   font-size: 13px;
   font-weight: 500;
-  color: var(--ios-orange);
+  color: var(--orange);
 }
 
 .alert-close {
@@ -1608,75 +1842,84 @@ body {
   height: 24px;
   border-radius: 50%;
   border: none;
-  background: var(--ios-fill-secondary);
-  color: var(--ios-text-secondary);
-  font-size: 12px;
+  background: var(--fill-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s var(--ios-ease);
+  transition: all 0.2s var(--ease-out);
+  padding: 0;
 }
 
 .alert-close:active {
   transform: scale(0.9);
 }
 
+/* ===== STAT GRID ===== */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
+}
+
+@media (min-width: 480px) {
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .stat-item {
   text-align: center;
   padding: 14px 8px;
-  border-radius: var(--ios-radius-sm);
-  background: var(--ios-fill);
-  border: 1px solid var(--ios-card-border);
+  border-radius: var(--radius-sm);
+  background: var(--fill);
+  border: 1px solid var(--border);
 }
 
 .stat-highlight {
-  background: rgba(0, 122, 255, 0.06);
-  border-color: rgba(0, 122, 255, 0.12);
+  background: var(--blue-bg);
+  border-color: var(--blue-border);
+}
+
+.stat-save {
+  background: var(--green-bg);
+  border-color: var(--green-border);
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
-  color: var(--ios-text);
+  color: var(--text);
   letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-unit {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
-  color: var(--ios-text-secondary);
+  color: var(--text-secondary);
   margin-left: 2px;
 }
 
-.stat-highlight .stat-value {
-  color: var(--ios-blue);
-}
-
-.stat-green {
-  color: var(--ios-green) !important;
-}
+.stat-highlight .stat-value { color: var(--blue); }
+.stat-save .stat-value { color: var(--green); }
 
 .stat-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--ios-text-secondary);
+  color: var(--text-secondary);
   margin-top: 4px;
 }
 
+/* ===== CHAIN FLOW ===== */
 .chain-flow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 0;
 }
 
@@ -1685,7 +1928,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  transition: transform 0.35s var(--ios-spring);
+  transition: transform 0.3s var(--spring);
 }
 
 .chain-node:hover {
@@ -1702,20 +1945,12 @@ body {
   font-size: 18px;
   font-weight: 700;
   color: #fff;
-  transition: transform 0.35s var(--ios-spring);
+  transition: transform 0.3s var(--spring);
 }
 
-.chain-avatar.head {
-  background: linear-gradient(135deg, #FF6B6B, #FF3B30);
-}
-
-.chain-avatar.mid {
-  background: linear-gradient(135deg, #5AC8FA, #007AFF);
-}
-
-.chain-avatar.tail {
-  background: linear-gradient(135deg, #63E6BE, #34C759);
-}
+.chain-avatar.head { background: linear-gradient(135deg, #FF6B6B, #FF3B30); }
+.chain-avatar.mid  { background: linear-gradient(135deg, #5AC8FA, #007AFF); }
+.chain-avatar.tail { background: linear-gradient(135deg, #63E6BE, #34C759); }
 
 .chain-avatar.has-image {
   background-size: cover;
@@ -1723,17 +1958,9 @@ body {
   color: transparent;
 }
 
-.chain-avatar.has-image.head {
-  box-shadow: 0 0 0 2px var(--ios-red);
-}
-
-.chain-avatar.has-image.mid {
-  box-shadow: 0 0 0 2px var(--ios-blue);
-}
-
-.chain-avatar.has-image.tail {
-  box-shadow: 0 0 0 2px var(--ios-green);
-}
+.chain-avatar.has-image.head { box-shadow: 0 0 0 2px var(--red); }
+.chain-avatar.has-image.mid  { box-shadow: 0 0 0 2px var(--blue); }
+.chain-avatar.has-image.tail { box-shadow: 0 0 0 2px var(--green); }
 
 .chain-node:hover .chain-avatar {
   transform: scale(1.1);
@@ -1742,35 +1969,85 @@ body {
 .chain-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--ios-text);
+  color: var(--text);
 }
 
 .chain-user-id {
   font-size: 10px;
   font-weight: 500;
-  color: var(--ios-text-tertiary);
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
 .chain-elf {
   font-size: 11px;
-  color: var(--ios-text-secondary);
+  color: var(--text-secondary);
 }
 
 .chain-arrow {
-  color: var(--ios-text-tertiary);
   display: flex;
   align-items: center;
-  padding-top: 4px;
+  color: var(--text-tertiary);
+  padding-top: 14px;
 }
 
-.chain-arrow svg {
-  width: 20px;
-  height: 20px;
+/* ===== RESULT COLUMN ===== */
+.result-section {
+  display: flex;
+  flex-direction: column;
 }
 
+.export-bar {
+  margin-bottom: 16px;
+}
+
+.export-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ===== EXPORT CONTAINER ===== */
+.export-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.export-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 12px;
+}
+
+.export-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.export-tier-badge {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--blue-bg);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ===== RESULT CARD ===== */
 .result-card {
   overflow: hidden;
+}
+
+.result-card.card-head {
+  border-left: 3px solid var(--red);
+}
+
+.result-card.card-tail {
+  border-left: 3px solid var(--green);
 }
 
 .result-header {
@@ -1799,7 +2076,7 @@ body {
 }
 
 .result-avatar.head { background: linear-gradient(135deg, #FF6B6B, #FF3B30); }
-.result-avatar.mid { background: linear-gradient(135deg, #5AC8FA, #007AFF); }
+.result-avatar.mid  { background: linear-gradient(135deg, #5AC8FA, #007AFF); }
 .result-avatar.tail { background: linear-gradient(135deg, #63E6BE, #34C759); }
 
 .result-avatar.has-image {
@@ -1808,22 +2085,14 @@ body {
   color: transparent;
 }
 
-.result-avatar.has-image.head {
-  box-shadow: 0 0 0 2px var(--ios-red);
-}
-
-.result-avatar.has-image.mid {
-  box-shadow: 0 0 0 2px var(--ios-blue);
-}
-
-.result-avatar.has-image.tail {
-  box-shadow: 0 0 0 2px var(--ios-green);
-}
+.result-avatar.has-image.head { box-shadow: 0 0 0 2px var(--red); }
+.result-avatar.has-image.mid  { box-shadow: 0 0 0 2px var(--blue); }
+.result-avatar.has-image.tail { box-shadow: 0 0 0 2px var(--green); }
 
 .result-name {
   font-size: 18px;
   font-weight: 700;
-  color: var(--ios-text);
+  color: var(--text);
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -1833,44 +2102,29 @@ body {
 .result-user-id {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ios-text-tertiary);
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
 .result-elf-badge {
   font-size: 13px;
-  color: var(--ios-text-secondary);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
 .role-badge {
   padding: 4px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-full);
   font-size: 13px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
-.role-badge.源头 {
-  background: rgba(255, 59, 48, 0.1);
-  color: var(--ios-red);
-}
+.role-badge.源头   { background: var(--red-bg);    color: var(--red); }
+.role-badge.中间人 { background: var(--blue-bg);   color: var(--blue); }
+.role-badge.车尾   { background: var(--green-bg);  color: var(--green); }
 
-.role-badge.中间人 {
-  background: rgba(0, 122, 255, 0.1);
-  color: var(--ios-blue);
-}
-
-.role-badge.车尾 {
-  background: rgba(52, 199, 89, 0.1);
-  color: var(--ios-green);
-}
-
-.ios-divider {
-  height: 1px;
-  background: var(--ios-separator);
-  margin: 14px 0;
-}
-
+/* ===== LINE LIST ===== */
 .line-list {
   list-style: none;
   padding: 0;
@@ -1884,7 +2138,7 @@ body {
   align-items: baseline;
   gap: 10px;
   padding: 8px 0;
-  border-top: 1px solid var(--ios-separator);
+  border-top: 1px solid var(--separator);
 }
 
 .line-item:first-child {
@@ -1894,25 +2148,25 @@ body {
 
 .line-amount {
   flex: 0 0 auto;
-  min-width: 72px;
+  min-width: 56px;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.2px;
   font-variant-numeric: tabular-nums;
-  color: var(--ios-text);
+  color: var(--text);
 }
 
 .line-amount.expense,
 .line-amount.out {
-  color: var(--ios-red);
+  color: var(--red);
 }
 
 .line-amount.in {
-  color: var(--ios-green);
+  color: var(--green);
 }
 
 .line-amount.info {
-  color: var(--ios-blue);
+  color: var(--blue);
   font-size: 13px;
   font-weight: 600;
 }
@@ -1921,45 +2175,43 @@ body {
   flex: 1;
   font-size: 14px;
   line-height: 1.45;
-  color: var(--ios-text);
+  color: var(--text);
   word-break: break-word;
-}
-
-.line-item.info-tag .line-label {
-  color: var(--ios-text-secondary);
 }
 
 .line-note {
   font-size: 12px;
-  color: var(--ios-text-tertiary);
+  color: var(--text-tertiary);
   margin-left: 4px;
 }
 
+/* ===== NET SUMMARY ===== */
 .net-summary {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   padding: 12px 14px;
   margin-top: 12px;
-  border-radius: var(--ios-radius-sm);
-  background: rgba(255, 59, 48, 0.08);
-  border: 1px solid rgba(255, 59, 48, 0.18);
+  border-radius: var(--radius-sm);
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
 }
 
 .net-summary-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--ios-text-secondary);
+  color: var(--text-secondary);
 }
 
 .net-summary-value {
   font-size: 22px;
   font-weight: 800;
-  color: var(--ios-red);
+  color: var(--red);
   letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
 }
 
+/* ===== FRIEND CHIPS ===== */
 .friend-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1972,7 +2224,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
@@ -1991,87 +2243,37 @@ body {
 }
 
 .friend-chip.ok {
-  background: rgba(52, 199, 89, 0.1);
-  color: var(--ios-green);
+  background: var(--green-bg);
+  color: var(--green);
 }
 
 .friend-chip.ok .friend-chip-icon {
-  background: var(--ios-green);
+  background: var(--green);
 }
 
 .friend-chip.need {
-  background: rgba(255, 149, 0, 0.1);
-  color: var(--ios-orange);
+  background: var(--orange-bg);
+  color: var(--orange);
 }
 
 .friend-chip.need .friend-chip-icon {
-  background: var(--ios-orange);
+  background: var(--orange);
 }
 
 .friend-chip-tag {
-  font-weight: 600;
-  margin-left: 2px;
+  font-size: 10px;
+  background: var(--orange-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--orange);
 }
 
-.ios-list-enter-active {
-  transition: all 0.45s var(--ios-spring);
-}
-.ios-list-leave-active {
-  transition: all 0.3s var(--ios-ease);
-}
-.ios-list-enter-from {
-  opacity: 0;
-  transform: translateY(-16px) scale(0.95);
-}
-.ios-list-leave-to {
-  opacity: 0;
-  transform: translateX(40px) scale(0.95);
+.flex-shrink {
+  flex-shrink: 0;
 }
 
-.ios-alert-enter-active {
-  transition: all 0.45s var(--ios-spring);
-}
-.ios-alert-leave-active {
-  transition: all 0.25s var(--ios-ease);
-}
-.ios-alert-enter-from,
-.ios-alert-leave-to {
-  opacity: 0;
-  transform: translateY(-10px) scale(0.95);
-}
-
-.ios-card-anim-enter-active {
-  transition: all 0.55s var(--ios-spring);
-}
-.ios-card-anim-leave-active {
-  transition: all 0.3s var(--ios-ease);
-}
-.ios-card-anim-enter-from {
-  opacity: 0;
-  transform: translateY(24px) scale(0.96);
-}
-.ios-card-anim-leave-to {
-  opacity: 0;
-  transform: translateY(-12px) scale(0.98);
-}
-
-.export-bar {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-.export-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-radius: var(--ios-radius);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.export-spinner {
+/* ===== SPINNER ===== */
+.spinner {
   display: inline-block;
   width: 18px;
   height: 18px;
@@ -2079,240 +2281,111 @@ body {
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.export-icon-wrap {
-  font-size: 18px;
+/* ===== TRANSITIONS ===== */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s var(--spring);
 }
 
-.export-container {
-  border-radius: var(--ios-radius);
-  overflow: hidden;
+.list-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 
-.export-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, var(--ios-blue), var(--ios-purple));
-  color: #fff;
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
 }
 
-.export-title {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+.list-leave-active {
+  position: absolute;
 }
 
-.export-tier-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 13px;
-  font-weight: 600;
+.list-move {
+  transition: transform 0.4s var(--spring);
 }
 
-@media (min-width: 1024px) {
+/* Alert transitions */
+.alert-enter-active,
+.alert-leave-active {
+  transition: all 0.35s var(--spring);
+}
+
+.alert-enter-from,
+.alert-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.96);
+}
+
+/* Fade transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.45s var(--ease-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.fade-move {
+  transition: transform 0.45s var(--ease-out);
+}
+
+/* ===== RESPONSIVE ENHANCEMENTS ===== */
+@media (max-width: 959px) {
   .app-content {
-    max-width: 1280px;
-    padding: 24px 28px 56px;
-  }
-
-  .app-title-text {
-    font-size: 19px;
-  }
-
-  .content-wrapper.has-result {
-    display: grid;
-    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-  }
-
-  .content-wrapper:not(.has-result) .config-column {
-    max-width: 720px;
-    width: 100%;
-    margin: 0 auto;
-  }
-
-  .stat-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  .person-fields {
-    flex-wrap: wrap;
-  }
-}
-
-@media (min-width: 1440px) {
-  .app-content {
-    max-width: 1440px;
-  }
-
-  .content-wrapper.has-result {
-    grid-template-columns: minmax(0, 500px) minmax(0, 1fr);
-    gap: 32px;
-  }
-}
-
-@media (max-width: 640px) {
-  .app-content {
-    padding: 12px 12px 40px;
+    padding: 16px 12px 48px;
   }
 
   .app-header {
-    padding: 12px 14px;
-    margin-bottom: 12px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-sm);
   }
 
-  .app-title-text {
-    font-size: 15px;
-  }
-
-  .app-title-icon {
-    font-size: 20px;
-  }
-
-  .app-header-actions .ios-btn-sm {
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-
-  .app-header-actions .btn-text {
-    display: none;
-  }
-
-  .app-header-actions .btn-icon {
-    font-size: 15px;
-  }
-
-  .ios-card {
+  .card {
     padding: 16px;
-    border-radius: 14px;
+    border-radius: var(--radius-sm);
   }
 
   .section-title {
-    font-size: 18px;
+    font-size: 17px;
   }
 
-  .person-fields {
-    flex-direction: column;
-    align-items: stretch;
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .name-field,
-  .elf-field,
-  .user-id-field {
-    width: 100%;
-    min-width: 0;
+  .stat-value {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-title-text {
+    font-size: 16px;
   }
 
-  .person-avatar-slot {
-    width: 48px;
-    height: 48px;
-    margin-top: 16px;
-  }
-
-  .head-field,
-  .tail-field {
-    display: inline-flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .head-field .field-label,
-  .tail-field .field-label {
-    margin-bottom: 0;
+  .btn-large {
+    padding: 12px 20px;
+    font-size: 15px;
   }
 
   .segment-btn {
     padding: 12px 8px;
   }
 
-  .elf-name-row {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .stat-value {
-    font-size: 22px;
-  }
-
-  .net-value {
-    font-size: 20px;
-  }
-
-  .chain-flow {
-    gap: 4px;
-  }
-
-  .chain-avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .matrix-name {
-    max-width: 48px;
-    font-size: 12px;
-  }
-
-  .matrix-cell {
-    width: 34px;
-    height: 34px;
-  }
-
-  .action-bar {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .action-bar .ios-btn-large {
-    width: 100%;
-  }
-
-  .result-header {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .line-item {
-    gap: 8px;
-    padding: 6px 0;
-  }
-
-  .line-amount {
-    min-width: 60px;
+  .segment-text {
     font-size: 14px;
   }
-
-  .line-label {
-    font-size: 13px;
-  }
-
-  .line-note {
-    display: block;
-    margin-left: 0;
-  }
-
-  .net-summary {
-    padding: 10px 12px;
-  }
-
-  .net-summary-value {
-    font-size: 20px;
-  }
 }
-
 </style>
