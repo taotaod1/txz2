@@ -1,11 +1,5 @@
 <template>
-  <JoinView
-    v-if="joinSessionId"
-    :session-id="joinSessionId"
-    :elf1-name="joinElfName1"
-    :elf2-name="joinElfName2"
-  />
-  <div v-else class="app-container" :class="{ 'dark-mode': isDark }">
+  <div class="app-container" :class="{ 'dark-mode': isDark }">
     <div class="app-content">
 
       <header class="app-header ios-card">
@@ -62,12 +56,12 @@
           </div>
           <div class="elf-name-row">
             <div class="elf-name-field">
-              <label class="ios-label">精灵1名称</label>
-              <input v-model="elfName1" placeholder="雪熊" class="ios-input" />
+              <label class="ios-label">离心舞者</label>
+              <input v-model="elfName1" placeholder="离心舞者" class="ios-input" />
             </div>
             <div class="elf-name-field">
-              <label class="ios-label">精灵2名称</label>
-              <input v-model="elfName2" placeholder="火龙" class="ios-input" />
+              <label class="ios-label">胡桃王子</label>
+              <input v-model="elfName2" placeholder="胡桃王子" class="ios-input" />
             </div>
           </div>
         </section>
@@ -75,11 +69,7 @@
         <section class="ios-card people-section">
           <div class="section-header">
             <h2 class="section-title">👥 人物列表</h2>
-            <div class="section-actions">
-              <button class="ios-btn ios-btn-secondary" @click="openQrModal">
-                <span class="btn-icon">📷</span> 二维码录入
-              </button>
-              <button class="ios-btn ios-btn-primary" @click="addPerson">
+            <div class="section-actions">              <button class="ios-btn ios-btn-primary" @click="addPerson">
                 <span class="btn-icon">＋</span> 添加
               </button>
             </div>
@@ -141,12 +131,12 @@
                       class="elf-radio-btn"
                       :class="{ active: person.needElf === 'elf1' }"
                       @click="person.needElf = 'elf1'"
-                    >{{ elfName1 || '雪熊' }}</button>
+                    >{{ elfName1 || '离心舞者' }}</button>
                     <button
                       class="elf-radio-btn"
                       :class="{ active: person.needElf === 'elf2' }"
                       @click="person.needElf = 'elf2'"
-                    >{{ elfName2 || '火龙' }}</button>
+                    >{{ elfName2 || '胡桃王子' }}</button>
                     <button
                       class="elf-radio-btn"
                       :class="{ active: person.needElf === 'any' }"
@@ -436,75 +426,18 @@
       </div>
     </div>
 
-    <Transition name="modal-fade">
-      <div v-if="qrModalOpen" class="qr-modal-mask" @click.self="closeQrModal">
-        <div class="qr-modal ios-card">
-          <div class="qr-modal-header">
-            <h3 class="qr-modal-title">📷 二维码录入</h3>
-            <button class="qr-modal-close" @click="closeQrModal">✕</button>
-          </div>
-
-          <div class="qr-modal-body">
-            <div class="qr-status" :class="qrStatusClass">
-              <span class="status-dot"></span>
-              <span>{{ qrStatusText }}</span>
-            </div>
-
-            <div class="qr-canvas-wrap">
-              <canvas ref="qrCanvasRef" class="qr-canvas"></canvas>
-              <div v-if="!qrReady" class="qr-loading">生成中...</div>
-            </div>
-
-            <div class="qr-tips">
-              <div>用手机扫描二维码 → 填写信息 → 提交</div>
-              <div class="qr-tips-sub">提交后会自动添加到下方列表，可重复使用</div>
-            </div>
-
-            <div v-if="qrReceived.length > 0" class="qr-received">
-              <div class="qr-received-title">已接收 {{ qrReceived.length }} 条</div>
-              <div class="qr-received-list">
-                <div
-                  v-for="(r, idx) in qrReceived"
-                  :key="idx"
-                  class="qr-received-item"
-                >
-                  <div
-                    class="qr-received-avatar"
-                    :style="r.avatar ? { backgroundImage: `url(${r.avatar})` } : null"
-                  >
-                    <span v-if="!r.avatar">{{ (r.name || '?').charAt(0) }}</span>
-                  </div>
-                  <div class="qr-received-info">
-                    <div class="qr-received-name">{{ r.name }}<span v-if="r.userId" class="qr-received-id"> #{{ r.userId }}</span></div>
-                    <div class="qr-received-elf">{{ getElfName(r.needElf) }}</div>
-                  </div>
-                  <span class="qr-received-tick">✓</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
-    </Transition>
-  </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, nextTick, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, nextTick } from 'vue'
 import { generatePlan, PRICE } from './utils/calculator.js'
 import html2canvas from 'html2canvas'
-import Peer from 'peerjs'
-import QRCode from 'qrcode'
-import JoinView from './JoinView.vue'
 
-const urlParams = new URLSearchParams(window.location.search)
-const joinSessionId = ref(urlParams.get('join') || '')
-const joinElfName1 = ref(urlParams.get('e1') || '雪熊')
-const joinElfName2 = ref(urlParams.get('e2') || '火龙')
 
 const tier = ref('normal')
-const elfName1 = ref('雪熊')
-const elfName2 = ref('火龙')
+const elfName1 = ref('离心舞者')
+const elfName2 = ref('胡桃王子')
 const isDark = ref(false)
 
 let nextId = 1
@@ -593,8 +526,8 @@ function onTailToggle(person) {
 }
 
 function getElfName(elf) {
-  if (elf === 'elf1') return elfName1.value || '雪熊'
-  if (elf === 'elf2') return elfName2.value || '火龙'
+  if (elf === 'elf1') return elfName1.value || '离心舞者'
+  if (elf === 'elf2') return elfName2.value || '胡桃王子'
   return '都行'
 }
 
@@ -603,8 +536,8 @@ function resetAll() {
   friendships.clear()
   nextId = 1
   tier.value = 'normal'
-  elfName1.value = '雪熊'
-  elfName2.value = '火龙'
+  elfName1.value = '离心舞者'
+  elfName2.value = '胡桃王子'
   planResult.value = null
   errorMsg.value = ''
 }
@@ -626,7 +559,7 @@ function doGenerate() {
   if (people.some((p) => !p.needElf)) { errorMsg.value = '请为所有人选择需求精灵版本'; return }
   const result = generatePlan(
     [...people], tier.value,
-    { elf1: elfName1.value || '雪熊', elf2: elfName2.value || '火龙' },
+    { elf1: elfName1.value || '离心舞者', elf2: elfName2.value || '胡桃王子' },
     buildFriendMatrix()
   )
   if (!result.success) { errorMsg.value = result.error; return }
@@ -720,142 +653,6 @@ async function fileToCompressedAvatar(file, maxSize = 128) {
   })
 }
 
-const qrModalOpen = ref(false)
-const qrCanvasRef = ref(null)
-const qrReady = ref(false)
-const qrStatus = ref('init')
-const qrReceived = ref([])
-let qrPeer = null
-let qrConnections = []
-let qrSessionId = ''
-
-const qrStatusText = computed(() => {
-  switch (qrStatus.value) {
-    case 'init': return '生成会话中...'
-    case 'open': return '等待扫描...'
-    case 'connected': return '✓ 手机已连接'
-    case 'error': return '连接失败，请关闭重试'
-    default: return ''
-  }
-})
-
-const qrStatusClass = computed(() => {
-  if (qrStatus.value === 'connected') return 'ok'
-  if (qrStatus.value === 'error') return 'err'
-  return 'pending'
-})
-
-function makeSessionId() {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  let id = 'lkp-'
-  for (let i = 0; i < 10; i++) {
-    id += alphabet[Math.floor(Math.random() * alphabet.length)]
-  }
-  return id
-}
-
-async function openQrModal() {
-  qrModalOpen.value = true
-  qrStatus.value = 'init'
-  qrReady.value = false
-  qrReceived.value = []
-  qrConnections = []
-  qrSessionId = makeSessionId()
-
-  try {
-    qrPeer = new Peer(qrSessionId)
-  } catch (e) {
-    qrStatus.value = 'error'
-    return
-  }
-
-  qrPeer.on('open', async (id) => {
-    qrStatus.value = 'open'
-    const joinUrl = buildJoinUrl(id)
-    await nextTick()
-    await renderQrTo(qrCanvasRef.value, joinUrl)
-    qrReady.value = true
-  })
-
-  qrPeer.on('connection', (conn) => {
-    qrConnections.push(conn)
-    qrStatus.value = 'connected'
-
-    conn.on('data', (data) => {
-      if (!data || data.type !== 'person') return
-      const incoming = {
-        name: typeof data.name === 'string' ? data.name.slice(0, 40) : '',
-        userId: typeof data.userId === 'string' ? data.userId.slice(0, 40) : '',
-        avatar: typeof data.avatar === 'string' && data.avatar.startsWith('data:image/') ? data.avatar : '',
-        needElf: ['elf1', 'elf2', 'any'].includes(data.needElf) ? data.needElf : 'elf1',
-      }
-      if (!incoming.name) return
-      people.push({
-        id: nextId++,
-        name: incoming.name,
-        userId: incoming.userId,
-        avatar: incoming.avatar,
-        needElf: incoming.needElf,
-        isHead: false,
-        isTail: false,
-      })
-      qrReceived.value = [...qrReceived.value, incoming]
-      showImportToast(`已通过二维码录入：${incoming.name}`)
-    })
-
-    conn.on('close', () => {
-      qrConnections = qrConnections.filter((c) => c !== conn)
-    })
-  })
-
-  qrPeer.on('error', (err) => {
-    if (err && err.type === 'unavailable-id') {
-      qrStatus.value = 'error'
-    } else if (qrStatus.value !== 'connected') {
-      qrStatus.value = 'error'
-    }
-  })
-}
-
-function buildJoinUrl(sessionId) {
-  const base = window.location.origin + window.location.pathname
-  const params = new URLSearchParams()
-  params.set('join', sessionId)
-  if (elfName1.value) params.set('e1', elfName1.value)
-  if (elfName2.value) params.set('e2', elfName2.value)
-  return base + '?' + params.toString()
-}
-
-async function renderQrTo(canvas, text) {
-  if (!canvas) return
-  try {
-    await QRCode.toCanvas(canvas, text, {
-      width: 240,
-      margin: 1,
-      errorCorrectionLevel: 'M',
-      color: { dark: '#1C1C1E', light: '#FFFFFF' },
-    })
-  } catch (e) {
-    qrStatus.value = 'error'
-  }
-}
-
-function closeQrModal() {
-  qrModalOpen.value = false
-  teardownQrSession()
-}
-
-function teardownQrSession() {
-  try { qrConnections.forEach((c) => c.close && c.close()) } catch {}
-  qrConnections = []
-  try { qrPeer && qrPeer.destroy() } catch {}
-  qrPeer = null
-  qrSessionId = ''
-}
-
-onBeforeUnmount(() => {
-  teardownQrSession()
-})
 
 function exportConfig() {
   if (people.length === 0) return
@@ -2518,252 +2315,4 @@ body {
   }
 }
 
-.qr-modal-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.qr-modal {
-  width: 100%;
-  max-width: 420px;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: var(--ios-card-solid);
-  border-radius: var(--ios-radius);
-  padding: 0;
-}
-
-.qr-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--ios-separator);
-}
-
-.qr-modal-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ios-text);
-}
-
-.qr-modal-close {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: none;
-  background: var(--ios-fill-secondary);
-  color: var(--ios-text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.qr-modal-body {
-  padding: 18px 20px 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-}
-
-.qr-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.qr-status .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.qr-status.pending {
-  background: rgba(255, 149, 0, 0.1);
-  color: var(--ios-orange);
-}
-
-.qr-status.pending .status-dot {
-  background: var(--ios-orange);
-  animation: qr-pulse 1.5s ease-in-out infinite;
-}
-
-.qr-status.ok {
-  background: rgba(52, 199, 89, 0.1);
-  color: var(--ios-green);
-}
-
-.qr-status.ok .status-dot {
-  background: var(--ios-green);
-}
-
-.qr-status.err {
-  background: rgba(255, 59, 48, 0.1);
-  color: var(--ios-red);
-}
-
-.qr-status.err .status-dot {
-  background: var(--ios-red);
-}
-
-@keyframes qr-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.qr-canvas-wrap {
-  position: relative;
-  width: 240px;
-  height: 240px;
-  padding: 12px;
-  background: #fff;
-  border-radius: var(--ios-radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.qr-canvas {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-.qr-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: var(--ios-radius-sm);
-  font-size: 13px;
-  color: var(--ios-text-secondary);
-}
-
-.qr-tips {
-  text-align: center;
-  font-size: 13px;
-  color: var(--ios-text);
-  line-height: 1.5;
-}
-
-.qr-tips-sub {
-  font-size: 12px;
-  color: var(--ios-text-secondary);
-  margin-top: 2px;
-}
-
-.qr-received {
-  width: 100%;
-  border-top: 1px solid var(--ios-separator);
-  padding-top: 14px;
-  margin-top: 6px;
-}
-
-.qr-received-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ios-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-}
-
-.qr-received-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.qr-received-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  background: var(--ios-fill);
-  border-radius: var(--ios-radius-xs);
-}
-
-.qr-received-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: var(--ios-fill-secondary);
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ios-text-secondary);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.qr-received-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.qr-received-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ios-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.qr-received-id {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ios-text-tertiary);
-}
-
-.qr-received-elf {
-  font-size: 12px;
-  color: var(--ios-text-secondary);
-}
-
-.qr-received-tick {
-  color: var(--ios-green);
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.25s var(--ios-ease);
-}
-
-.modal-fade-enter-active .qr-modal,
-.modal-fade-leave-active .qr-modal {
-  transition: transform 0.3s var(--ios-spring);
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-from .qr-modal,
-.modal-fade-leave-to .qr-modal {
-  transform: scale(0.92) translateY(20px);
-}
 </style>

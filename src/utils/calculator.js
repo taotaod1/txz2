@@ -1,4 +1,4 @@
-const elfNames = { elf1: '雪熊', elf2: '火龙' }
+const elfNames = { elf1: '离心舞者', elf2: '胡桃王子' }
 
 const PRICE = {
   normal: { pass: 68, coupon: 40 },
@@ -135,8 +135,8 @@ function searchChain(people, friendMap) {
  * @param {Array} friendMatrix - [[idA, idB], ...] 双向好友关系（仅用于提示）
  */
 export function generatePlan(people, tier, names, friendMatrix) {
-  elfNames.elf1 = names.elf1 || '雪熊'
-  elfNames.elf2 = names.elf2 || '火龙'
+  elfNames.elf1 = names.elf1 || '离心舞者'
+  elfNames.elf2 = names.elf2 || '胡桃王子'
 
   const validation = validatePeople(people)
   if (!validation.valid) {
